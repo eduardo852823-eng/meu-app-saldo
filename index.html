@@ -14,7 +14,7 @@
 
 <div class="bg-grid"></div>
 
-<!-- Modal de boas-vindas -->
+<!-- Modal de boas-vindas / login -->
 <div class="modal-overlay" id="modalBoasVindas">
   <div class="modal-card">
     <div class="modal-icone">
@@ -24,12 +24,24 @@
       </svg>
     </div>
     <h1>Bem-vindo ao saldo.</h1>
-    <p class="modal-explica">Anote o que você gasta e o que recebe, e acompanhe seu saldo de um jeito simples.</p>
-    <p>Como podemos te chamar?</p>
-    <form id="formNome">
-      <input type="text" id="inputNome" placeholder="Seu nome" maxlength="20" required autocomplete="off">
-      <button type="submit">Começar</button>
+    <p class="modal-explica">Crie uma conta pra acessar seus dados de qualquer aparelho e receber avisos por e-mail.</p>
+
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" data-auth="entrar">Entrar</button>
+      <button type="button" class="auth-tab" data-auth="cadastrar">Criar conta</button>
+    </div>
+
+    <form id="formAuth">
+      <input type="text" id="authNome" placeholder="Seu nome" maxlength="20" autocomplete="off" style="display:none;">
+      <input type="email" id="authEmail" placeholder="seuemail@gmail.com" required autocomplete="off">
+      <input type="password" id="authSenha" placeholder="Senha" required autocomplete="off">
+      <button type="submit" id="btnAuthSubmit">Entrar</button>
     </form>
+
+    <div id="authErro" class="auth-erro"></div>
+    <div id="authCarregando" class="auth-carregando" style="display:none;">Conectando ao servidor... (pode levar até 1 minuto se ele estava dormindo)</div>
+
+    <button id="btnSemConta" class="link-discreto" style="margin-top:14px;">Continuar sem conta (dados só neste aparelho)</button>
   </div>
 </div>
 

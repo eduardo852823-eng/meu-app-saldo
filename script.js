@@ -13,6 +13,7 @@ let devAtivo = false;
 let emailUsuario = '';
 let fotoUsuario = '';
 let limiteGasto = null;
+let tokenSessao = '';
 
 // --- Chaves de armazenamento ---
 const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
@@ -26,6 +27,8 @@ const CHAVE_EMAIL = 'saldo_email';
 const CHAVE_FOTO = 'saldo_foto';
 const CHAVE_LIMITE = 'saldo_limite';
 const SENHA_DEV = '1708';
+const API_URL = 'https://meu-app-saldo.onrender.com';
+const CHAVE_TOKEN = 'saldo_token';
 
 const CATEGORIAS = {
   comida:     { nome: 'Comida',      icone: '🍔' },
@@ -96,8 +99,15 @@ const btnSalvarLimite = document.getElementById('btnSalvarLimite');
 const limiteAvisoEl = document.getElementById('limiteAviso');
 const comparacaoEl = document.getElementById('comparacao');
 const modalBoasVindas = document.getElementById('modalBoasVindas');
-const formNome = document.getElementById('formNome');
-const inputNome = document.getElementById('inputNome');
+const formAuth = document.getElementById('formAuth');
+const authTabs = document.querySelectorAll('.auth-tab');
+const authNome = document.getElementById('authNome');
+const authEmail = document.getElementById('authEmail');
+const authSenha = document.getElementById('authSenha');
+const btnAuthSubmit = document.getElementById('btnAuthSubmit');
+const authErroEl = document.getElementById('authErro');
+const authCarregandoEl = document.getElementById('authCarregando');
+const btnSemConta = document.getElementById('btnSemConta');
 const saudacaoEl = document.getElementById('saudacao');
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabConteudos = document.querySelectorAll('.tab-conteudo');
@@ -125,9 +135,11 @@ function salvar() {
     localStorage.setItem(CHAVE_EMAIL, emailUsuario);
     localStorage.setItem(CHAVE_FOTO, fotoUsuario);
     localStorage.setItem(CHAVE_LIMITE, limiteGasto === null ? '' : String(limiteGasto));
+    localStorage.setItem(CHAVE_TOKEN, tokenSessao);
   } catch (e) {
     console.warn('Não foi possível salvar os dados localmente.', e);
   }
+  sincronizarComServidor();
 }
 
 function carregar() {
@@ -149,6 +161,7 @@ function carregar() {
     fotoUsuario = localStorage.getItem(CHAVE_FOTO) || '';
     const limite = localStorage.getItem(CHAVE_LIMITE);
     if (limite) limiteGasto = parseFloat(limite);
+    tokenSessao = localStorage.getItem(CHAVE_TOKEN) || '';
   } catch (e) {
     console.warn('Não foi possível carregar os dados salvos.', e);
     lancamentos = [];
@@ -261,13 +274,15 @@ document.querySelectorAll('.config-linha').forEach(linha => {
   linha.addEventListener('click', () => {
     const secao = linha.dataset.secao;
     if (secao === 'sair') {
-      if (!confirm('Isso vai apagar seu perfil (nome, foto, e-mail) neste aparelho. Seus lançamentos continuam salvos. Continuar?')) return;
+      if (!confirm('Isso vai sair da sua conta neste aparelho. Seus dados continuam salvos no servidor (se você tiver conta) e você pode entrar de novo quando quiser. Continuar?')) return;
       nomeUsuario = '';
       emailUsuario = '';
       fotoUsuario = '';
+      tokenSessao = '';
       localStorage.removeItem(CHAVE_NOME);
       localStorage.removeItem(CHAVE_EMAIL);
       localStorage.removeItem(CHAVE_FOTO);
+      localStorage.removeItem(CHAVE_TOKEN);
       location.reload();
       return;
     }
@@ -421,7 +436,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// --- Modal de boas-vindas ---
+// --- Modal de boas-vindas / login ---
 function verificarNome() {
   if (nomeUsuario) {
     modalBoasVindas.classList.add('escondido');
@@ -431,15 +446,109 @@ function verificarNome() {
   }
 }
 
-formNome.addEventListener('submit', (e) => {
+let modoAuth = 'entrar';
+
+authTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    authTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    modoAuth = tab.dataset.auth;
+    authNome.style.display = modoAuth === 'cadastrar' ? 'block' : 'none';
+    btnAuthSubmit.textContent = modoAuth === 'cadastrar' ? 'Criar conta' : 'Entrar';
+    authErroEl.textContent = '';
+  });
+});
+
+formAuth.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const nome = inputNome.value.trim();
-  if (!nome) return;
-  nomeUsuario = nome;
+  authErroEl.textContent = '';
+
+  const email = authEmail.value.trim();
+  const senha = authSenha.value;
+  const nome = authNome.value.trim();
+
+  if (modoAuth === 'cadastrar' && !nome) {
+    authErroEl.textContent = 'Digita seu nome também.';
+    return;
+  }
+
+  const rota = modoAuth === 'cadastrar' ? '/cadastro' : '/login';
+  const corpo = modoAuth === 'cadastrar' ? { nome, email, senha } : { email, senha };
+
+  btnAuthSubmit.disabled = true;
+  authCarregandoEl.style.display = 'block';
+
+  try {
+    const resp = await fetch(API_URL + rota, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+    const dados = await resp.json();
+
+    if (!resp.ok) {
+      authErroEl.textContent = dados.erro || 'Algo deu errado. Tenta de novo.';
+      return;
+    }
+
+    tokenSessao = dados.token;
+    nomeUsuario = dados.nome;
+    emailUsuario = dados.email;
+    salvar();
+
+    // Busca os dados salvos no servidor (se já existirem)
+    try {
+      const respDados = await fetch(API_URL + '/dados', {
+        headers: { Authorization: 'Bearer ' + tokenSessao }
+      });
+      if (respDados.ok) {
+        const dadosServidor = await respDados.json();
+        if (dadosServidor.lancamentos && dadosServidor.lancamentos.length > 0) {
+          lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
+        }
+        if (dadosServidor.metaAlvo) metaAlvo = dadosServidor.metaAlvo;
+        salvar();
+      }
+    } catch (erroDados) {
+      console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
+    }
+
+    saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+    modalBoasVindas.classList.add('escondido');
+    renderizarTudo();
+  } catch (erro) {
+    authErroEl.textContent = 'Não consegui conectar ao servidor. Confere sua internet ou tenta de novo em instantes (o servidor pode estar "acordando").';
+  } finally {
+    btnAuthSubmit.disabled = false;
+    authCarregandoEl.style.display = 'none';
+  }
+});
+
+btnSemConta.addEventListener('click', () => {
+  const nome = prompt('Como podemos te chamar?');
+  if (!nome || !nome.trim()) return;
+  nomeUsuario = nome.trim();
   salvar();
   saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
   modalBoasVindas.classList.add('escondido');
 });
+
+// --- Sincronizar com o servidor (se logado) ---
+async function sincronizarComServidor() {
+  if (!tokenSessao) return;
+  try {
+    await fetch(API_URL + '/dados', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + tokenSessao
+      },
+      body: JSON.stringify({ lancamentos, metaAlvo })
+    });
+  } catch (erro) {
+    console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho).', erro);
+  }
+}
 
 // --- Abas ---
 const DICAS_ABA = {
@@ -901,6 +1010,30 @@ function atualizarComparacao() {
   linhaComparacao('Recebido', atual.entradas, anterior.entradas);
 }
 
+// --- Buscar dados do servidor ao abrir o app (se já logado) ---
+async function buscarDadosServidorAoAbrir() {
+  if (!tokenSessao) return;
+  try {
+    const resp = await fetch(API_URL + '/dados', {
+      headers: { Authorization: 'Bearer ' + tokenSessao }
+    });
+    if (resp.ok) {
+      const dadosServidor = await resp.json();
+      if (dadosServidor.lancamentos) {
+        lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
+      }
+      if (dadosServidor.metaAlvo) metaAlvo = dadosServidor.metaAlvo;
+      renderizarTudo();
+    } else if (resp.status === 401) {
+      // Token expirado/inválido — desloga silenciosamente
+      tokenSessao = '';
+      localStorage.removeItem(CHAVE_TOKEN);
+    }
+  } catch (erro) {
+    console.warn('Não consegui buscar dados do servidor agora — usando os dados salvos neste aparelho.', erro);
+  }
+}
+
 // --- Inicialização ---
 atualizarDataTopo();
 carregar();
@@ -910,3 +1043,4 @@ aplicarGating();
 preencherCategorias();
 carregarCamposPerfil();
 renderizarTudo();
+buscarDadosServidorAoAbrir();
