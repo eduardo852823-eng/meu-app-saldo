@@ -46,6 +46,9 @@
       <span class="brand-name">saldo.</span>
     </div>
     <div class="topbar-direita">
+      <button id="btnConfig" class="btn-tema" title="Configurações">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
       <button id="btnTema" class="btn-tema" title="Alternar tema">
         <svg id="iconeLua" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         <svg id="iconeSol" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
@@ -80,7 +83,6 @@
     <button class="tab-btn active" data-tab="lancar">Lançar</button>
     <button class="tab-btn" data-tab="meses">Meses</button>
     <button class="tab-btn" data-tab="analise">Análise</button>
-    <button class="tab-btn tab-config" data-tab="config" title="Configurações">⚙</button>
   </nav>
   <p class="tabs-dica" id="tabsDica">Adicione seus gastos e ganhos aqui</p>
 
@@ -219,7 +221,53 @@
   <!-- ABA CONFIG -->
   <section class="tab-conteudo" id="tab-config">
 
-    <section class="painel perfil-painel">
+    <!-- Menu principal de config -->
+    <section class="painel" id="configMenu">
+      <div class="config-linha" data-secao="perfil">
+        <div class="config-linha-icone">👤</div>
+        <div class="config-linha-texto">
+          <div class="config-linha-titulo">Perfil</div>
+          <div class="config-linha-sub">Nome, foto e e-mail</div>
+        </div>
+        <div class="config-linha-seta">›</div>
+      </div>
+      <div class="config-linha" data-secao="plano">
+        <div class="config-linha-icone">💳</div>
+        <div class="config-linha-texto">
+          <div class="config-linha-titulo">Plano e pagamentos</div>
+          <div class="config-linha-sub" id="resumoPlanoMenu">Free</div>
+        </div>
+        <div class="config-linha-seta">›</div>
+      </div>
+      <div class="config-linha" data-secao="dev">
+        <div class="config-linha-icone">🛠️</div>
+        <div class="config-linha-texto">
+          <div class="config-linha-titulo">Modo desenvolvedor</div>
+          <div class="config-linha-sub" id="resumoDevMenu">Desligado</div>
+        </div>
+        <div class="config-linha-seta">›</div>
+      </div>
+      <div class="config-linha" data-secao="sobre">
+        <div class="config-linha-icone">ℹ️</div>
+        <div class="config-linha-texto">
+          <div class="config-linha-titulo">Sobre e versão</div>
+          <div class="config-linha-sub">saldo. v1.0</div>
+        </div>
+        <div class="config-linha-seta">›</div>
+      </div>
+      <div class="config-linha config-linha-perigo" data-secao="sair">
+        <div class="config-linha-icone">🚪</div>
+        <div class="config-linha-texto">
+          <div class="config-linha-titulo">Sair</div>
+          <div class="config-linha-sub">Trocar de usuário neste aparelho</div>
+        </div>
+        <div class="config-linha-seta">›</div>
+      </div>
+    </section>
+
+    <!-- Sub-seção: Perfil -->
+    <section class="painel config-sub" id="secaoPerfil" style="display:none;">
+      <button class="config-voltar">‹ Configurações</button>
       <div class="perfil-topo">
         <div class="perfil-foto-wrap">
           <img id="perfilFotoImg" class="perfil-foto" style="display:none">
@@ -238,15 +286,18 @@
       <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;">Salvar perfil</button>
     </section>
 
-    <section class="painel">
+    <!-- Sub-seção: Plano -->
+    <section class="painel config-sub" id="secaoPlano" style="display:none;">
+      <button class="config-voltar">‹ Configurações</button>
       <div class="lista-header" style="margin-bottom:14px;">
         <span>Seu plano: <b id="planoAtualNome">Free</b></span>
-        <button id="btnCompararPlanos" class="btn-ghost-sm">Comparar</button>
       </div>
-      <div id="comparativoPlanos" class="comparativo escondido"></div>
+      <div id="comparativoPlanos" class="comparativo"></div>
     </section>
 
-    <section class="painel">
+    <!-- Sub-seção: Modo Dev -->
+    <section class="painel config-sub" id="secaoDev" style="display:none;">
+      <button class="config-voltar">‹ Configurações</button>
       <div class="lista-header" style="margin-bottom: 14px;">
         <span>Modo desenvolvedor</span>
       </div>
@@ -256,6 +307,17 @@
         <button id="btnDevAtivar" class="btn-ghost-sm">Ativar</button>
       </div>
       <button id="btnDevDesativar" class="link-discreto" style="display:none;margin-top:8px;">Desativar modo desenvolvedor</button>
+    </section>
+
+    <!-- Sub-seção: Sobre -->
+    <section class="painel config-sub" id="secaoSobre" style="display:none;">
+      <button class="config-voltar">‹ Configurações</button>
+      <div class="sobre-conteudo">
+        <div class="sobre-icone">💰</div>
+        <div class="sobre-nome">saldo.</div>
+        <div class="sobre-versao">Versão 1.0.0</div>
+        <p class="sobre-texto">Um app simples de controle de gastos e ganhos, feito para aprender e organizar a vida financeira.</p>
+      </div>
     </section>
 
   </section>

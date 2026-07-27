@@ -74,7 +74,6 @@ const perfilFotoPlaceholder = document.getElementById('perfilFotoPlaceholder');
 
 // Plano
 const planoAtualNomeEl = document.getElementById('planoAtualNome');
-const btnCompararPlanos = document.getElementById('btnCompararPlanos');
 const comparativoPlanosEl = document.getElementById('comparativoPlanos');
 
 // Dev mode
@@ -177,6 +176,9 @@ function aplicarGating() {
     ? 'Ultimate (modo dev)'
     : (planoAtual === 'pro' ? 'Pro' : planoAtual === 'ultimate' ? 'Ultimate' : 'Free');
 
+  document.getElementById('resumoPlanoMenu').textContent = planoAtualNomeEl.textContent;
+  document.getElementById('resumoDevMenu').textContent = devAtivo ? 'Ativado' : 'Desligado';
+
   devStatusEl.textContent = devAtivo
     ? 'Ativo — todas as funções Pro e Ultimate liberadas.'
     : 'Desbloqueia todas as funções Pro e Ultimate.';
@@ -240,19 +242,58 @@ const DADOS_PLANOS = [
   }
 ];
 
-btnCompararPlanos.addEventListener('click', () => {
-  if (comparativoPlanosEl.innerHTML.trim() === '') {
-    comparativoPlanosEl.innerHTML = DADOS_PLANOS.map(p => `
-      <div class="plano-card">
-        <div class="plano-card-nome">${p.nome}</div>
-        <ul>
-          ${p.itens.map(i => `<li class="${i.tem ? 'tem' : 'nao'}">${i.texto}</li>`).join('')}
-        </ul>
-      </div>
-    `).join('');
-  }
-  comparativoPlanosEl.classList.toggle('escondido');
+// --- Botão de configurações (canto superior direito) ---
+const btnConfig = document.getElementById('btnConfig');
+btnConfig.addEventListener('click', () => {
+  tabBtns.forEach(b => b.classList.remove('active'));
+  tabConteudos.forEach(c => c.classList.remove('ativo'));
+  document.getElementById('tab-config').classList.add('ativo');
+  tabsDica.textContent = DICAS_ABA.config;
+  mostrarMenuConfig();
 });
+
+function mostrarMenuConfig() {
+  document.getElementById('configMenu').style.display = 'block';
+  document.querySelectorAll('.config-sub').forEach(s => s.style.display = 'none');
+}
+
+document.querySelectorAll('.config-linha').forEach(linha => {
+  linha.addEventListener('click', () => {
+    const secao = linha.dataset.secao;
+    if (secao === 'sair') {
+      if (!confirm('Isso vai apagar seu perfil (nome, foto, e-mail) neste aparelho. Seus lançamentos continuam salvos. Continuar?')) return;
+      nomeUsuario = '';
+      emailUsuario = '';
+      fotoUsuario = '';
+      localStorage.removeItem(CHAVE_NOME);
+      localStorage.removeItem(CHAVE_EMAIL);
+      localStorage.removeItem(CHAVE_FOTO);
+      location.reload();
+      return;
+    }
+    document.getElementById('configMenu').style.display = 'none';
+    document.querySelectorAll('.config-sub').forEach(s => s.style.display = 'none');
+    const alvo = document.getElementById(`secao${secao.charAt(0).toUpperCase()}${secao.slice(1)}`);
+    if (alvo) alvo.style.display = 'block';
+    if (secao === 'plano') renderizarComparativo();
+    if (secao === 'perfil') carregarCamposPerfil();
+  });
+});
+
+document.querySelectorAll('.config-voltar').forEach(btn => {
+  btn.addEventListener('click', mostrarMenuConfig);
+});
+
+function renderizarComparativo() {
+  comparativoPlanosEl.innerHTML = DADOS_PLANOS.map(p => `
+    <div class="plano-card">
+      <div class="plano-card-nome">${p.nome}</div>
+      <ul>
+        ${p.itens.map(i => `<li class="${i.tem ? 'tem' : 'nao'}">${i.texto}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
 
 // --- Perfil (nome, e-mail, foto) ---
 function carregarCamposPerfil() {
