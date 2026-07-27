@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Saldo — Controle de Gastos</title>
+<meta name="theme-color" content="#05070d" id="themeColorMeta">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<!-- Modal de boas-vindas -->
+<div class="modal-overlay" id="modalBoasVindas">
+  <div class="modal-card">
+    <div class="modal-icone">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="white" stroke-width="1.8"/>
+        <path d="M12 7v10M9.5 9.2c0-1 1-1.7 2.5-1.7s2.5.6 2.5 1.6c0 2.3-5 1-5 3.3 0 1 1 1.6 2.5 1.6s2.5-.7 2.5-1.7" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>Bem-vindo ao saldo.</h1>
+    <p class="modal-explica">Anote o que você gasta e o que recebe, e acompanhe seu saldo de um jeito simples.</p>
+    <p>Como podemos te chamar?</p>
+    <form id="formNome">
+      <input type="text" id="inputNome" placeholder="Seu nome" maxlength="20" required autocomplete="off">
+      <button type="submit">Começar</button>
+    </form>
+  </div>
+</div>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="white" stroke-width="1.8"/>
+          <path d="M12 7v10M9.5 9.2c0-1 1-1.7 2.5-1.7s2.5.6 2.5 1.6c0 2.3-5 1-5 3.3 0 1 1 1.6 2.5 1.6s2.5-.7 2.5-1.7" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">saldo.</span>
+    </div>
+    <div class="topbar-direita">
+      <button id="btnTema" class="btn-tema" title="Alternar tema">
+        <svg id="iconeLua" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconeSol" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <div class="topbar-date" id="dataAtual"></div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-saudacao" id="saudacao">Olá</div>
+    <div class="hero-label">seu saldo é</div>
+    <div class="hero-linha-valor">
+      <div class="hero-value" id="saldoTotal">R$ 0,00</div>
+      <button id="btnOcultar" class="btn-ocultar" title="Ocultar saldo">
+        <svg id="iconeOlhoAberto" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg id="iconeOlhoFechado" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
+    <div class="hero-sub">
+      <div class="pill pill-in">
+        <span class="pill-dot"></span>
+        <span>Entradas <b id="totalEntradas">R$ 0,00</b></span>
+      </div>
+      <div class="pill pill-out">
+        <span class="pill-dot"></span>
+        <span>Saídas <b id="totalSaidas">R$ 0,00</b></span>
+      </div>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="lancar">Lançar</button>
+    <button class="tab-btn" data-tab="meses">Meses</button>
+    <button class="tab-btn" data-tab="analise">Análise</button>
+    <button class="tab-btn tab-config" data-tab="config" title="Configurações">⚙</button>
+  </nav>
+  <p class="tabs-dica" id="tabsDica">Adicione seus gastos e ganhos aqui</p>
+
+  <!-- ABA LANÇAR -->
+  <section class="tab-conteudo ativo" id="tab-lancar">
+
+    <section class="painel">
+      <form id="formLancamento" class="form-lanc">
+        <div class="form-row">
+          <input type="text" id="descricao" placeholder="Ex: Lanche, mesada, jogo..." required maxlength="40">
+          <input type="number" id="valor" placeholder="0,00" step="0.01" min="0.01" required>
+        </div>
+
+        <div class="form-row" id="linhaCategoria" style="display:none;">
+          <select id="categoria" class="select-cat"></select>
+        </div>
+
+        <div class="form-row form-row-tipo">
+          <div class="tipo-toggle">
+            <button type="button" class="tipo-btn tipo-saida active" data-tipo="saida">
+              <span class="seta">↓</span> Gastei
+            </button>
+            <button type="button" class="tipo-btn tipo-entrada" data-tipo="entrada">
+              <span class="seta">↑</span> Recebi
+            </button>
+          </div>
+          <button type="submit" class="btn-add" id="btnSubmit">
+            <span>Adicionar</span>
+          </button>
+        </div>
+
+        <label class="check-recorrente" id="linhaRecorrente" style="display:none;">
+          <input type="checkbox" id="checkRecorrente">
+          <span>Repetir todo mês (gasto/ganho fixo)</span>
+        </label>
+
+        <div class="dica-teclado">Enter adiciona · Esc cancela edição</div>
+      </form>
+    </section>
+
+    <section class="painel" id="painelBusca" style="display:none;">
+      <input type="text" id="buscaLancamento" placeholder="🔍 Buscar por nome...">
+    </section>
+
+    <section class="painel" id="painelLimite" style="display:none;">
+      <div class="lista-header" style="margin-bottom: 10px;">
+        <span>Limite de gasto mensal</span>
+      </div>
+      <div class="form-row">
+        <input type="number" id="limiteValor" placeholder="Ex: 100,00" step="0.01" min="0">
+        <button id="btnSalvarLimite" class="btn-ghost-sm">Salvar</button>
+      </div>
+      <div id="limiteAviso" class="limite-aviso"></div>
+    </section>
+
+    <section class="painel">
+      <div class="filtros">
+        <button class="filtro-btn ativo" data-filtro="todos">Tudo</button>
+        <button class="filtro-btn" data-filtro="entrada">Entradas</button>
+        <button class="filtro-btn" data-filtro="saida">Saídas</button>
+      </div>
+
+      <div class="lista-header">
+        <span>Movimentações</span>
+      </div>
+
+      <div id="blocosMeses"></div>
+
+      <div id="vazio" class="vazio">
+        <div class="vazio-icone">◌</div>
+        <p>Nada por aqui ainda.</p>
+        <span>Adicione seu primeiro gasto ou ganho acima.</span>
+      </div>
+    </section>
+
+  </section>
+
+  <!-- ABA MESES -->
+  <section class="tab-conteudo" id="tab-meses">
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Resumo por mês</span>
+      </div>
+      <div id="resumoMeses" class="resumo-meses"></div>
+      <div id="resumoMesesVazio" class="vazio vazio-mini">
+        <span>Nenhum mês com movimentações ainda.</span>
+      </div>
+    </section>
+  </section>
+
+  <!-- ABA ANÁLISE -->
+  <section class="tab-conteudo" id="tab-analise">
+
+    <section class="painel meta-painel">
+      <div class="meta-topo">
+        <div>
+          <div class="meta-label">Meta de economia</div>
+          <div class="meta-valores"><span id="metaAtual">R$ 0,00</span> de <span id="metaAlvo">—</span></div>
+        </div>
+        <button id="btnEditarMeta" class="btn-ghost-sm">Definir</button>
+      </div>
+      <div class="meta-barra-fundo">
+        <div class="meta-barra" id="metaBarra"></div>
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Comparado ao mês passado</span>
+      </div>
+      <div id="comparacao" class="comparacao"></div>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Maiores gastos do mês</span>
+      </div>
+      <div id="topGastos" class="top-lista"></div>
+      <div id="topGastosVazio" class="vazio vazio-mini">
+        <span>Sem saídas registradas ainda.</span>
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Maiores entradas do mês</span>
+      </div>
+      <div id="topEntradas" class="top-lista"></div>
+      <div id="topEntradasVazio" class="vazio vazio-mini">
+        <span>Sem entradas registradas ainda.</span>
+      </div>
+    </section>
+
+  </section>
+
+  <!-- ABA CONFIG -->
+  <section class="tab-conteudo" id="tab-config">
+
+    <section class="painel perfil-painel">
+      <div class="perfil-topo">
+        <div class="perfil-foto-wrap">
+          <img id="perfilFotoImg" class="perfil-foto" style="display:none">
+          <div id="perfilFotoPlaceholder" class="perfil-foto-placeholder">👤</div>
+          <button id="btnFoto" class="btn-foto-editar" title="Alterar foto">✎</button>
+          <input type="file" id="inputFoto" accept="image/*" hidden>
+        </div>
+        <div class="perfil-campos">
+          <label class="campo-label">Seu nome</label>
+          <input type="text" id="configNome" maxlength="20" placeholder="Seu nome">
+        </div>
+      </div>
+      <label class="campo-label">E-mail (avisos dentro do app)</label>
+      <input type="email" id="configEmail" placeholder="seuemail@gmail.com">
+      <p class="campo-aviso">Sem servidor próprio, não dá pra mandar e-mail de verdade — os avisos aparecem só aqui dentro do app.</p>
+      <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;">Salvar perfil</button>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom:14px;">
+        <span>Seu plano: <b id="planoAtualNome">Free</b></span>
+        <button id="btnCompararPlanos" class="btn-ghost-sm">Comparar</button>
+      </div>
+      <div id="comparativoPlanos" class="comparativo escondido"></div>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Modo desenvolvedor</span>
+      </div>
+      <div id="devStatus" class="dev-status">Desbloqueia todas as funções Pro e Ultimate.</div>
+      <div class="form-row" id="devForm">
+        <input type="password" id="devSenha" placeholder="Senha" maxlength="10">
+        <button id="btnDevAtivar" class="btn-ghost-sm">Ativar</button>
+      </div>
+      <button id="btnDevDesativar" class="link-discreto" style="display:none;margin-top:8px;">Desativar modo desenvolvedor</button>
+    </section>
+
+  </section>
+
+  <footer class="rodape">
+    <button id="btnExportar" class="link-discreto">Exportar backup</button>
+    <span class="rodape-sep">·</span>
+    <button id="btnImportar" class="link-discreto">Importar backup</button>
+    <span class="rodape-sep">·</span>
+    <button id="btnResetar" class="link-discreto link-perigo">Resetar tudo</button>
+    <input type="file" id="inputImportar" accept="application/json" hidden>
+  </footer>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

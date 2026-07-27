@@ -1,0 +1,871 @@
+// --- Ícones por tipo (categorias removidas para simplificar o app) ---
+const ICONE_TIPO = { entrada: '💰', saida: '🛒' };
+
+// --- Estado ---
+let lancamentos = [];
+let tipoAtual = 'saida';
+let filtroAtual = 'todos';
+let metaAlvo = null;
+let editandoId = null;
+let saldoOculto = false;
+let planoAtual = 'free';
+let devAtivo = false;
+let emailUsuario = '';
+let fotoUsuario = '';
+let limiteGasto = null;
+
+// --- Chaves de armazenamento ---
+const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
+const CHAVE_META = 'saldo_meta';
+const CHAVE_NOME = 'saldo_nome';
+const CHAVE_TEMA = 'saldo_tema';
+const CHAVE_OCULTO = 'saldo_oculto';
+const CHAVE_PLANO = 'saldo_plano';
+const CHAVE_DEV = 'saldo_dev';
+const CHAVE_EMAIL = 'saldo_email';
+const CHAVE_FOTO = 'saldo_foto';
+const CHAVE_LIMITE = 'saldo_limite';
+const SENHA_DEV = '1708';
+
+const CATEGORIAS = {
+  comida:     { nome: 'Comida',      icone: '🍔' },
+  jogos:      { nome: 'Jogos',       icone: '🎮' },
+  transporte: { nome: 'Transporte',  icone: '🚌' },
+  lazer:      { nome: 'Lazer',       icone: '🎬' },
+  estudos:    { nome: 'Estudos',     icone: '📚' },
+  mesada:     { nome: 'Mesada',      icone: '💰' },
+  outros:     { nome: 'Outros',      icone: '📦' }
+};
+
+// --- Elementos ---
+const form = document.getElementById('formLancamento');
+const inputDesc = document.getElementById('descricao');
+const inputValor = document.getElementById('valor');
+const btnsTipo = document.querySelectorAll('.tipo-btn');
+const btnSubmit = document.getElementById('btnSubmit');
+const blocosMeses = document.getElementById('blocosMeses');
+const vazio = document.getElementById('vazio');
+const saldoTotalEl = document.getElementById('saldoTotal');
+const totalEntradasEl = document.getElementById('totalEntradas');
+const totalSaidasEl = document.getElementById('totalSaidas');
+const dataAtualEl = document.getElementById('dataAtual');
+const filtroBtns = document.querySelectorAll('.filtro-btn');
+const metaAtualEl = document.getElementById('metaAtual');
+const metaAlvoEl = document.getElementById('metaAlvo');
+const metaBarraEl = document.getElementById('metaBarra');
+const btnEditarMeta = document.getElementById('btnEditarMeta');
+const graficoSaidaEl = document.getElementById('topGastos');
+const graficoSaidaVazioEl = document.getElementById('topGastosVazio');
+const graficoEntradaEl = document.getElementById('topEntradas');
+const graficoEntradaVazioEl = document.getElementById('topEntradasVazio');
+const btnOcultar = document.getElementById('btnOcultar');
+const iconeOlhoAberto = document.getElementById('iconeOlhoAberto');
+const iconeOlhoFechado = document.getElementById('iconeOlhoFechado');
+const tabsDica = document.getElementById('tabsDica');
+
+// Config / perfil
+const configNome = document.getElementById('configNome');
+const configEmail = document.getElementById('configEmail');
+const btnSalvarPerfil = document.getElementById('btnSalvarPerfil');
+const btnFoto = document.getElementById('btnFoto');
+const inputFoto = document.getElementById('inputFoto');
+const perfilFotoImg = document.getElementById('perfilFotoImg');
+const perfilFotoPlaceholder = document.getElementById('perfilFotoPlaceholder');
+
+// Plano
+const planoAtualNomeEl = document.getElementById('planoAtualNome');
+const btnCompararPlanos = document.getElementById('btnCompararPlanos');
+const comparativoPlanosEl = document.getElementById('comparativoPlanos');
+
+// Dev mode
+const devStatusEl = document.getElementById('devStatus');
+const devSenhaInput = document.getElementById('devSenha');
+const btnDevAtivar = document.getElementById('btnDevAtivar');
+const btnDevDesativar = document.getElementById('btnDevDesativar');
+const devForm = document.getElementById('devForm');
+
+// Recursos Pro/Ultimate
+const selectCat = document.getElementById('categoria');
+const linhaCategoria = document.getElementById('linhaCategoria');
+const linhaRecorrente = document.getElementById('linhaRecorrente');
+const checkRecorrente = document.getElementById('checkRecorrente');
+const painelBusca = document.getElementById('painelBusca');
+const buscaLancamento = document.getElementById('buscaLancamento');
+const painelLimite = document.getElementById('painelLimite');
+const limiteValorInput = document.getElementById('limiteValor');
+const btnSalvarLimite = document.getElementById('btnSalvarLimite');
+const limiteAvisoEl = document.getElementById('limiteAviso');
+const comparacaoEl = document.getElementById('comparacao');
+const modalBoasVindas = document.getElementById('modalBoasVindas');
+const formNome = document.getElementById('formNome');
+const inputNome = document.getElementById('inputNome');
+const saudacaoEl = document.getElementById('saudacao');
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabConteudos = document.querySelectorAll('.tab-conteudo');
+const btnExportar = document.getElementById('btnExportar');
+const btnImportar = document.getElementById('btnImportar');
+const inputImportar = document.getElementById('inputImportar');
+const btnResetar = document.getElementById('btnResetar');
+
+const resumoMesesEl = document.getElementById('resumoMeses');
+const resumoMesesVazioEl = document.getElementById('resumoMesesVazio');
+const btnTema = document.getElementById('btnTema');
+const iconeLua = document.getElementById('iconeLua');
+const iconeSol = document.getElementById('iconeSol');
+const themeColorMeta = document.getElementById('themeColorMeta');
+let nomeUsuario = '';
+
+// --- Persistência (localStorage, funciona offline, sem precisar de servidor/domínio) ---
+function salvar() {
+  try {
+    localStorage.setItem(CHAVE_LANCAMENTOS, JSON.stringify(lancamentos));
+    localStorage.setItem(CHAVE_META, metaAlvo === null ? '' : String(metaAlvo));
+    localStorage.setItem(CHAVE_NOME, nomeUsuario);
+    localStorage.setItem(CHAVE_PLANO, planoAtual);
+    localStorage.setItem(CHAVE_DEV, devAtivo ? '1' : '0');
+    localStorage.setItem(CHAVE_EMAIL, emailUsuario);
+    localStorage.setItem(CHAVE_FOTO, fotoUsuario);
+    localStorage.setItem(CHAVE_LIMITE, limiteGasto === null ? '' : String(limiteGasto));
+  } catch (e) {
+    console.warn('Não foi possível salvar os dados localmente.', e);
+  }
+}
+
+function carregar() {
+  try {
+    const dados = localStorage.getItem(CHAVE_LANCAMENTOS);
+    if (dados) {
+      lancamentos = JSON.parse(dados).map(l => ({ ...l, data: new Date(l.data) }));
+    }
+    const meta = localStorage.getItem(CHAVE_META);
+    if (meta) metaAlvo = parseFloat(meta);
+    const nome = localStorage.getItem(CHAVE_NOME);
+    if (nome) nomeUsuario = nome;
+    const oculto = localStorage.getItem(CHAVE_OCULTO);
+    if (oculto === '1') saldoOculto = true;
+    const plano = localStorage.getItem(CHAVE_PLANO);
+    if (plano) planoAtual = plano;
+    devAtivo = localStorage.getItem(CHAVE_DEV) === '1';
+    emailUsuario = localStorage.getItem(CHAVE_EMAIL) || '';
+    fotoUsuario = localStorage.getItem(CHAVE_FOTO) || '';
+    const limite = localStorage.getItem(CHAVE_LIMITE);
+    if (limite) limiteGasto = parseFloat(limite);
+  } catch (e) {
+    console.warn('Não foi possível carregar os dados salvos.', e);
+    lancamentos = [];
+  }
+}
+
+// --- Sistema de planos ---
+function planoEfetivo() {
+  return devAtivo ? 'ultimate' : planoAtual;
+}
+
+function temRecurso(nivelMinimo) {
+  const ordem = { free: 0, pro: 1, ultimate: 2 };
+  return ordem[planoEfetivo()] >= ordem[nivelMinimo];
+}
+
+function aplicarGating() {
+  const pro = temRecurso('pro');
+  linhaCategoria.style.display = pro ? 'flex' : 'none';
+  linhaRecorrente.style.display = pro ? 'flex' : 'none';
+  painelBusca.style.display = pro ? 'block' : 'none';
+  painelLimite.style.display = pro ? 'block' : 'none';
+
+  planoAtualNomeEl.textContent = devAtivo
+    ? 'Ultimate (modo dev)'
+    : (planoAtual === 'pro' ? 'Pro' : planoAtual === 'ultimate' ? 'Ultimate' : 'Free');
+
+  devStatusEl.textContent = devAtivo
+    ? 'Ativo — todas as funções Pro e Ultimate liberadas.'
+    : 'Desbloqueia todas as funções Pro e Ultimate.';
+  devStatusEl.classList.toggle('ativo', devAtivo);
+  devForm.style.display = devAtivo ? 'none' : 'flex';
+  btnDevDesativar.style.display = devAtivo ? 'inline-block' : 'none';
+}
+
+btnDevAtivar.addEventListener('click', () => {
+  if (devSenhaInput.value === SENHA_DEV) {
+    devAtivo = true;
+    devSenhaInput.value = '';
+    salvar();
+    aplicarGating();
+    preencherCategorias();
+  } else {
+    alert('Senha incorreta.');
+  }
+});
+
+btnDevDesativar.addEventListener('click', () => {
+  devAtivo = false;
+  salvar();
+  aplicarGating();
+});
+
+// --- Comparativo de planos ---
+const DADOS_PLANOS = [
+  {
+    nome: 'Free',
+    itens: [
+      { texto: 'Lançar gastos e ganhos', tem: true },
+      { texto: 'Meta de economia', tem: true },
+      { texto: 'Resumo por mês', tem: true },
+      { texto: 'Categorias', tem: false },
+      { texto: 'Gastos recorrentes', tem: false },
+      { texto: 'Busca e limite de gasto', tem: false }
+    ]
+  },
+  {
+    nome: 'Pro',
+    itens: [
+      { texto: 'Tudo do Free', tem: true },
+      { texto: 'Categorias personalizadas', tem: true },
+      { texto: 'Gastos recorrentes', tem: true },
+      { texto: 'Alerta de limite mensal', tem: true },
+      { texto: 'Busca nos lançamentos', tem: true },
+      { texto: 'Múltiplas metas', tem: false }
+    ]
+  },
+  {
+    nome: 'Ultimate',
+    itens: [
+      { texto: 'Tudo do Pro', tem: true },
+      { texto: 'Múltiplas metas', tem: true },
+      { texto: 'Perfil com foto', tem: true },
+      { texto: 'Avisos por e-mail (dentro do app)', tem: true },
+      { texto: 'Sincronizar entre aparelhos', tem: false },
+      { texto: 'Vincular banco de verdade', tem: false }
+    ]
+  }
+];
+
+btnCompararPlanos.addEventListener('click', () => {
+  if (comparativoPlanosEl.innerHTML.trim() === '') {
+    comparativoPlanosEl.innerHTML = DADOS_PLANOS.map(p => `
+      <div class="plano-card">
+        <div class="plano-card-nome">${p.nome}</div>
+        <ul>
+          ${p.itens.map(i => `<li class="${i.tem ? 'tem' : 'nao'}">${i.texto}</li>`).join('')}
+        </ul>
+      </div>
+    `).join('');
+  }
+  comparativoPlanosEl.classList.toggle('escondido');
+});
+
+// --- Perfil (nome, e-mail, foto) ---
+function carregarCamposPerfil() {
+  configNome.value = nomeUsuario;
+  configEmail.value = emailUsuario;
+  if (fotoUsuario) {
+    perfilFotoImg.src = fotoUsuario;
+    perfilFotoImg.style.display = 'block';
+    perfilFotoPlaceholder.style.display = 'none';
+  } else {
+    perfilFotoImg.style.display = 'none';
+    perfilFotoPlaceholder.style.display = 'flex';
+  }
+}
+
+btnFoto.addEventListener('click', () => inputFoto.click());
+
+inputFoto.addEventListener('change', (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  const leitor = new FileReader();
+  leitor.onload = (evento) => {
+    fotoUsuario = evento.target.result;
+    carregarCamposPerfil();
+  };
+  leitor.readAsDataURL(arquivo);
+});
+
+btnSalvarPerfil.addEventListener('click', () => {
+  const nome = configNome.value.trim();
+  if (nome) {
+    nomeUsuario = nome;
+    saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+  }
+  emailUsuario = configEmail.value.trim();
+  salvar();
+  alert('Perfil salvo!');
+});
+
+// --- Busca nos lançamentos ---
+let termoBusca = '';
+buscaLancamento.addEventListener('input', () => {
+  termoBusca = buscaLancamento.value.trim().toLowerCase();
+  renderizarTudo();
+});
+
+// --- Limite de gasto mensal ---
+btnSalvarLimite.addEventListener('click', () => {
+  const valor = parseFloat(limiteValorInput.value);
+  limiteGasto = !isNaN(valor) && valor > 0 ? valor : null;
+  salvar();
+  atualizarAvisoLimite();
+});
+
+function atualizarAvisoLimite() {
+  if (!limiteGasto) { limiteAvisoEl.textContent = ''; return; }
+  const chaveAtual = chaveMes(new Date());
+  const gastoMes = lancamentos
+    .filter(l => l.tipo === 'saida' && chaveMes(l.data) === chaveAtual)
+    .reduce((s, l) => s + l.valor, 0);
+
+  if (gastoMes >= limiteGasto) {
+    limiteAvisoEl.textContent = `⚠️ Você já passou do limite de ${formatarMoeda(limiteGasto)} esse mês (gastou ${formatarMoeda(gastoMes)}).`;
+    limiteAvisoEl.className = 'limite-aviso perigo';
+  } else {
+    limiteAvisoEl.textContent = `Gastou ${formatarMoeda(gastoMes)} de ${formatarMoeda(limiteGasto)} esse mês.`;
+    limiteAvisoEl.className = 'limite-aviso ok';
+  }
+}
+
+// --- Preencher categorias (Pro+) ---
+function preencherCategorias() {
+  selectCat.innerHTML = '<option value="">Sem categoria</option>';
+  Object.entries(CATEGORIAS).forEach(([chave, cat]) => {
+    const opt = document.createElement('option');
+    opt.value = chave;
+    opt.textContent = `${cat.icone}  ${cat.nome}`;
+    selectCat.appendChild(opt);
+  });
+}
+
+// --- Ocultar/mostrar saldo ---
+function aplicarSaldoOculto() {
+  saldoTotalEl.classList.toggle('escondido', saldoOculto);
+  iconeOlhoAberto.style.display = saldoOculto ? 'none' : 'block';
+  iconeOlhoFechado.style.display = saldoOculto ? 'block' : 'none';
+  localStorage.setItem(CHAVE_OCULTO, saldoOculto ? '1' : '0');
+}
+
+btnOcultar.addEventListener('click', () => {
+  saldoOculto = !saldoOculto;
+  aplicarSaldoOculto();
+});
+
+// --- Tema claro/escuro ---
+function aplicarTema(tema) {
+  document.documentElement.setAttribute('data-tema', tema);
+  iconeLua.style.display = tema === 'escuro' ? 'block' : 'none';
+  iconeSol.style.display = tema === 'claro' ? 'block' : 'none';
+  themeColorMeta.setAttribute('content', tema === 'claro' ? '#f4f6fb' : '#05070d');
+  localStorage.setItem(CHAVE_TEMA, tema);
+}
+
+btnTema.addEventListener('click', () => {
+  const atual = document.documentElement.getAttribute('data-tema') || 'escuro';
+  aplicarTema(atual === 'escuro' ? 'claro' : 'escuro');
+});
+
+(function iniciarTema() {
+  const salvo = localStorage.getItem(CHAVE_TEMA);
+  if (salvo) {
+    aplicarTema(salvo);
+  } else {
+    const prefereClaro = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    aplicarTema(prefereClaro ? 'claro' : 'escuro');
+  }
+})();
+
+// --- Registrar service worker (PWA / uso offline) ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Falha silenciosa: se não puder registrar (ex: abrindo via file://), o app continua funcionando normalmente
+    });
+  });
+}
+
+// --- Modal de boas-vindas ---
+function verificarNome() {
+  if (nomeUsuario) {
+    modalBoasVindas.classList.add('escondido');
+    saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+  } else {
+    modalBoasVindas.classList.remove('escondido');
+  }
+}
+
+formNome.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const nome = inputNome.value.trim();
+  if (!nome) return;
+  nomeUsuario = nome;
+  salvar();
+  saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+  modalBoasVindas.classList.add('escondido');
+});
+
+// --- Abas ---
+const DICAS_ABA = {
+  lancar: 'Adicione seus gastos e ganhos aqui',
+  meses: 'Veja se cada mês fechou no lucro ou no prejuízo',
+  analise: 'Acompanhe metas, comparações e maiores lançamentos',
+  config: 'Ajuste seu perfil, plano e preferências'
+};
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabConteudos.forEach(c => c.classList.remove('ativo'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${btn.dataset.tab}`).classList.add('ativo');
+    tabsDica.textContent = DICAS_ABA[btn.dataset.tab] || '';
+  });
+});
+
+// --- Atalhos de teclado ---
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && editandoId !== null) {
+    sairModoEdicao();
+    form.reset();
+  }
+});
+
+// --- Exportar backup ---
+btnExportar.addEventListener('click', () => {
+  const backup = {
+    lancamentos,
+    metaAlvo,
+    nomeUsuario,
+    exportadoEm: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `saldo-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// --- Importar backup ---
+btnImportar.addEventListener('click', () => inputImportar.click());
+
+inputImportar.addEventListener('change', (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+
+  const leitor = new FileReader();
+  leitor.onload = (evento) => {
+    try {
+      const dados = JSON.parse(evento.target.result);
+      if (!Array.isArray(dados.lancamentos)) throw new Error('Formato inválido');
+
+      if (!confirm('Importar vai substituir os dados atuais. Continuar?')) return;
+
+      lancamentos = dados.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
+      metaAlvo = dados.metaAlvo || null;
+      if (dados.nomeUsuario) nomeUsuario = dados.nomeUsuario;
+
+      salvar();
+      verificarNome();
+      renderizarTudo();
+      alert('Backup importado com sucesso!');
+    } catch (err) {
+      alert('Não foi possível ler esse arquivo de backup.');
+    }
+  };
+  leitor.readAsText(arquivo);
+  inputImportar.value = '';
+});
+
+// --- Resetar tudo ---
+btnResetar.addEventListener('click', () => {
+  const confirmacao = prompt('Isso vai apagar TODOS os dados, incluindo seu nome e meta. Digite "resetar" para confirmar:');
+  if (confirmacao !== 'resetar') return;
+
+  lancamentos = [];
+  metaAlvo = null;
+  nomeUsuario = '';
+  localStorage.removeItem(CHAVE_LANCAMENTOS);
+  localStorage.removeItem(CHAVE_META);
+  localStorage.removeItem(CHAVE_NOME);
+
+  renderizarTudo();
+  verificarNome();
+});
+
+// --- Data no topo ---
+function atualizarDataTopo() {
+  const agora = new Date();
+  const opcoes = { weekday: 'long', day: 'numeric', month: 'long' };
+  dataAtualEl.textContent = agora.toLocaleDateString('pt-BR', opcoes);
+}
+
+// --- Formatação ---
+function formatarMoeda(valor) {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function nomeMes(data) {
+  const nome = data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return nome.charAt(0).toUpperCase() + nome.slice(1);
+}
+
+function chaveMes(data) {
+  return `${data.getFullYear()}-${String(data.getMonth()).padStart(2, '0')}`;
+}
+
+// --- Alternar tipo (Gastei / Recebi) ---
+btnsTipo.forEach(btn => {
+  btn.addEventListener('click', () => {
+    btnsTipo.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    tipoAtual = btn.dataset.tipo;
+  });
+});
+
+// --- Filtros ---
+filtroBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    filtroBtns.forEach(b => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    filtroAtual = btn.dataset.filtro;
+    renderizarTudo();
+  });
+});
+
+// --- Adicionar / salvar edição ---
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const descricao = inputDesc.value.trim();
+  const valor = parseFloat(inputValor.value);
+
+  if (!descricao || isNaN(valor) || valor <= 0) return;
+
+  if (editandoId !== null) {
+    const item = lancamentos.find(l => l.id === editandoId);
+    if (item) {
+      item.descricao = descricao;
+      item.valor = valor;
+      item.tipo = tipoAtual;
+      item.categoria = temRecurso('pro') ? selectCat.value : '';
+    }
+    sairModoEdicao();
+  } else {
+    lancamentos.unshift({
+      id: Date.now(),
+      descricao,
+      valor,
+      tipo: tipoAtual,
+      categoria: temRecurso('pro') ? selectCat.value : '',
+      recorrente: temRecurso('pro') && checkRecorrente.checked,
+      data: new Date()
+    });
+  }
+
+  salvar();
+  renderizarTudo();
+  form.reset();
+  inputDesc.focus();
+});
+
+function sairModoEdicao() {
+  editandoId = null;
+  btnSubmit.querySelector('span').textContent = 'Adicionar';
+  btnSubmit.classList.remove('editando-btn');
+}
+
+// --- Escapar HTML ---
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// --- Renderizar lista agrupada por mês ---
+function renderizarTudo() {
+  const filtrados = lancamentos.filter(l => {
+    const passaTipo = filtroAtual === 'todos' || l.tipo === filtroAtual;
+    const passaBusca = !termoBusca || l.descricao.toLowerCase().includes(termoBusca);
+    return passaTipo && passaBusca;
+  });
+
+  blocosMeses.innerHTML = '';
+
+  const grupos = {};
+  filtrados.forEach(item => {
+    const chave = chaveMes(item.data);
+    if (!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(item);
+  });
+
+  const chavesOrdenadas = Object.keys(grupos).sort().reverse();
+
+  chavesOrdenadas.forEach(chave => {
+    const itensDoMes = grupos[chave];
+    const bloco = document.createElement('div');
+    bloco.className = 'bloco-mes';
+
+    const titulo = document.createElement('div');
+    titulo.className = 'mes-titulo';
+    titulo.textContent = nomeMes(itensDoMes[0].data);
+    bloco.appendChild(titulo);
+
+    const ul = document.createElement('ul');
+    ul.className = 'lista';
+
+    itensDoMes.forEach(item => ul.appendChild(criarItemEl(item)));
+
+    bloco.appendChild(ul);
+    blocosMeses.appendChild(bloco);
+  });
+
+  vazio.classList.toggle('mostrar', lancamentos.length === 0);
+  atualizarResumo(false);
+  atualizarMeta();
+  atualizarGrafico();
+  atualizarComparacao();
+  atualizarResumoMeses();
+  atualizarAvisoLimite();
+}
+
+// --- Criar elemento de item ---
+function criarItemEl(item) {
+  const li = document.createElement('li');
+  li.className = `item ${item.tipo}`;
+  li.dataset.id = item.id;
+
+  const cat = item.categoria ? CATEGORIAS[item.categoria] : null;
+  const icone = cat ? cat.icone : ICONE_TIPO[item.tipo];
+  const sinal = item.tipo === 'saida' ? '-' : '+';
+  const dataFormatada = item.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const tagRecorrente = item.recorrente ? '<span class="item-cat-tag">🔁 Fixo</span>' : '';
+  const tagCat = cat ? `<span class="item-cat-tag">${cat.nome}</span>` : '';
+
+  li.innerHTML = `
+    <div class="item-icone">${icone}</div>
+    <div class="item-info">
+      <div class="item-desc">${escapeHTML(item.descricao)}</div>
+      <div class="item-data">${dataFormatada}</div>
+      ${tagCat}${tagRecorrente}
+    </div>
+    <div class="item-valor">${sinal} ${formatarMoeda(item.valor)}</div>
+    <button class="item-editar" title="Editar">✎</button>
+    <button class="item-del" title="Remover">✕</button>
+  `;
+
+  li.querySelector('.item-del').addEventListener('click', () => removerItem(item.id, li));
+  li.querySelector('.item-editar').addEventListener('click', () => iniciarEdicao(item));
+
+  return li;
+}
+
+// --- Editar ---
+function iniciarEdicao(item) {
+  editandoId = item.id;
+  inputDesc.value = item.descricao;
+  inputValor.value = item.valor;
+  btnsTipo.forEach(b => b.classList.toggle('active', b.dataset.tipo === item.tipo));
+  tipoAtual = item.tipo;
+  btnSubmit.querySelector('span').textContent = 'Salvar edição';
+  inputDesc.focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// --- Remover item ---
+function removerItem(id, elemento) {
+  elemento.classList.add('saindo');
+  setTimeout(() => {
+    lancamentos = lancamentos.filter(l => l.id !== id);
+    salvar();
+    renderizarTudo();
+  }, 280);
+}
+
+// --- Resumo (saldo, entradas, saídas) ---
+function atualizarResumo(pulsar) {
+  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+  const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+  const saldo = entradas - saidas;
+
+  totalEntradasEl.textContent = formatarMoeda(entradas);
+  totalSaidasEl.textContent = formatarMoeda(saidas);
+  saldoTotalEl.textContent = formatarMoeda(saldo);
+  saldoTotalEl.classList.toggle('negativo', saldo < 0);
+
+  if (pulsar) {
+    saldoTotalEl.classList.remove('pulsa');
+    void saldoTotalEl.offsetWidth;
+    saldoTotalEl.classList.add('pulsa');
+  }
+}
+
+// --- Meta de economia ---
+btnEditarMeta.addEventListener('click', () => {
+  const valor = prompt('Qual sua meta de economia (R$)?', metaAlvo || '');
+  if (valor === null) return;
+  const num = parseFloat(valor.replace(',', '.'));
+  if (!isNaN(num) && num > 0) {
+    metaAlvo = num;
+    salvar();
+    atualizarMeta();
+  }
+});
+
+function atualizarMeta() {
+  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+  const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+  const saldo = Math.max(entradas - saidas, 0);
+
+  metaAtualEl.textContent = formatarMoeda(saldo);
+
+  if (metaAlvo) {
+    metaAlvoEl.textContent = formatarMoeda(metaAlvo);
+    const pct = Math.min((saldo / metaAlvo) * 100, 100);
+    metaBarraEl.style.width = pct + '%';
+  } else {
+    metaAlvoEl.textContent = '—';
+    metaBarraEl.style.width = '0%';
+  }
+}
+
+// --- Maiores lançamentos do mês atual ---
+function montarTopLista(tipo, containerEl, vazioEl) {
+  const chaveAtual = chaveMes(new Date());
+  const itens = lancamentos
+    .filter(l => l.tipo === tipo && chaveMes(l.data) === chaveAtual)
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 5);
+
+  containerEl.innerHTML = '';
+  vazioEl.classList.toggle('mostrar', itens.length === 0);
+
+  itens.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'top-item';
+    const dataFormatada = item.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    div.innerHTML = `
+      <div class="top-pos">${i + 1}º</div>
+      <div class="top-info">
+        <div class="top-desc">${escapeHTML(item.descricao)}</div>
+        <div class="top-data">${dataFormatada}</div>
+      </div>
+      <div class="top-valor">${formatarMoeda(item.valor)}</div>
+    `;
+    containerEl.appendChild(div);
+  });
+}
+
+function atualizarGrafico() {
+  montarTopLista('saida', graficoSaidaEl, graficoSaidaVazioEl);
+  montarTopLista('entrada', graficoEntradaEl, graficoEntradaVazioEl);
+}
+
+// --- Resumo por mês (lucro/prejuízo) ---
+function atualizarResumoMeses() {
+  const grupos = {};
+  lancamentos.forEach(l => {
+    const chave = chaveMes(l.data);
+    if (!grupos[chave]) grupos[chave] = { entradas: 0, saidas: 0, data: l.data };
+    if (l.tipo === 'entrada') grupos[chave].entradas += l.valor;
+    else grupos[chave].saidas += l.valor;
+  });
+
+  const chaves = Object.keys(grupos).sort().reverse();
+
+  resumoMesesEl.innerHTML = '';
+  resumoMesesVazioEl.classList.toggle('mostrar', chaves.length === 0);
+
+  chaves.forEach(chave => {
+    const { entradas, saidas, data } = grupos[chave];
+    const saldo = entradas - saidas;
+    const total = entradas + saidas;
+    const pctIn = total ? (entradas / total) * 100 : 0;
+    const pctOut = total ? (saidas / total) * 100 : 0;
+
+    let classeSaldo = 'zerado';
+    let selo = 'neutro';
+    let seloTexto = 'Neutro';
+    if (saldo > 0) { classeSaldo = 'positivo'; selo = 'lucro'; seloTexto = 'Lucro'; }
+    else if (saldo < 0) { classeSaldo = 'negativo'; selo = 'prejuizo'; seloTexto = 'Prejuízo'; }
+
+    const card = document.createElement('div');
+    card.className = 'mes-card';
+    card.innerHTML = `
+      <div class="mes-card-topo">
+        <span class="mes-card-nome">${nomeMes(data)}</span>
+        <span class="mes-card-saldo ${classeSaldo}">${saldo >= 0 ? '+' : ''}${formatarMoeda(saldo)}</span>
+      </div>
+      <div class="mes-card-barras">
+        <div class="mes-card-barra-in" style="width:${pctIn}%"></div>
+        <div class="mes-card-barra-out" style="width:${pctOut}%"></div>
+      </div>
+      <div class="mes-card-linhas">
+        <span>Entrou <b>${formatarMoeda(entradas)}</b></span>
+        <span class="mes-card-selo ${selo}">${seloTexto}</span>
+        <span>Saiu <b>${formatarMoeda(saidas)}</b></span>
+      </div>
+    `;
+    resumoMesesEl.appendChild(card);
+  });
+}
+
+// --- Comparação com o mês anterior ---
+function atualizarComparacao() {
+  const agora = new Date();
+  const chaveAtual = chaveMes(agora);
+  const mesPassado = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+  const chaveAnterior = chaveMes(mesPassado);
+
+  function totaisDoMes(chave) {
+    const itens = lancamentos.filter(l => chaveMes(l.data) === chave);
+    const saidas = itens.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+    const entradas = itens.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+    return { saidas, entradas };
+  }
+
+  const atual = totaisDoMes(chaveAtual);
+  const anterior = totaisDoMes(chaveAnterior);
+
+  comparacaoEl.innerHTML = '';
+
+  function linhaComparacao(label, valorAtual, valorAnterior) {
+    let tagClasse = 'igual';
+    let tagTexto = 'Igual';
+
+    if (valorAnterior > 0) {
+      const diffPct = ((valorAtual - valorAnterior) / valorAnterior) * 100;
+      if (Math.abs(diffPct) < 1) {
+        tagTexto = 'Igual';
+        tagClasse = 'igual';
+      } else if (diffPct > 0) {
+        tagTexto = `+${diffPct.toFixed(0)}%`;
+        tagClasse = label === 'Gastos' ? 'sobe' : 'desce';
+      } else {
+        tagTexto = `${diffPct.toFixed(0)}%`;
+        tagClasse = label === 'Gastos' ? 'desce' : 'sobe';
+      }
+    } else if (valorAtual > 0) {
+      tagTexto = 'Novo';
+      tagClasse = label === 'Gastos' ? 'sobe' : 'desce';
+    }
+
+    const div = document.createElement('div');
+    div.className = 'comp-linha';
+    div.innerHTML = `
+      <span class="comp-nome">${label}: ${formatarMoeda(valorAtual)}</span>
+      <span class="comp-tag ${tagClasse}">${tagTexto}</span>
+    `;
+    comparacaoEl.appendChild(div);
+  }
+
+  linhaComparacao('Gastos', atual.saidas, anterior.saidas);
+  linhaComparacao('Recebido', atual.entradas, anterior.entradas);
+}
+
+// --- Inicialização ---
+atualizarDataTopo();
+carregar();
+verificarNome();
+aplicarSaldoOculto();
+aplicarGating();
+preencherCategorias();
+carregarCamposPerfil();
+renderizarTudo();
