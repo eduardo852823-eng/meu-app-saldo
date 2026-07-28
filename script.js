@@ -503,10 +503,10 @@ formAuth.addEventListener('submit', async (e) => {
       });
       if (respDados.ok) {
         const dadosServidor = await respDados.json();
-        if (dadosServidor.lancamentos && dadosServidor.lancamentos.length > 0) {
+        if (dadosServidor.lancamentos) {
           lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
         }
-        if (dadosServidor.metaAlvo) metaAlvo = dadosServidor.metaAlvo;
+        metaAlvo = dadosServidor.metaAlvo ?? null;
         salvar();
       }
     } catch (erroDados) {
@@ -1022,7 +1022,7 @@ async function buscarDadosServidorAoAbrir() {
       if (dadosServidor.lancamentos) {
         lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
       }
-      if (dadosServidor.metaAlvo) metaAlvo = dadosServidor.metaAlvo;
+      metaAlvo = dadosServidor.metaAlvo ?? null;
       renderizarTudo();
     } else if (resp.status === 401) {
       // Token expirado/inválido — desloga silenciosamente
