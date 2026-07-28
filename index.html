@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -34,12 +35,24 @@
     <form id="formAuth">
       <input type="text" id="authNome" placeholder="Seu nome" maxlength="20" autocomplete="off" style="display:none;">
       <input type="email" id="authEmail" placeholder="seuemail@gmail.com" required autocomplete="off">
-      <input type="password" id="authSenha" placeholder="Senha" required autocomplete="off">
+      <div class="campo-senha-wrap">
+        <input type="password" id="authSenha" placeholder="Senha" required autocomplete="off">
+        <button type="button" id="btnMostrarSenha" class="btn-olho-senha" title="Mostrar senha">👁</button>
+      </div>
       <button type="submit" id="btnAuthSubmit">Entrar</button>
+    </form>
+
+    <form id="formCodigo" style="display:none; flex-direction:column; gap:10px;">
+      <p class="modal-explica" style="margin-bottom:4px;">Mandamos um código de 6 dígitos pro seu e-mail. Confere a caixa de entrada (e o spam, às vezes cai lá).</p>
+      <input type="text" id="authCodigo" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="off">
+      <button type="submit" id="btnCodigoSubmit">Confirmar código</button>
+      <button type="button" id="btnReenviarCodigo" class="link-discreto" style="margin-top:4px;">Reenviar código</button>
     </form>
 
     <div id="authErro" class="auth-erro"></div>
     <div id="authCarregando" class="auth-carregando" style="display:none;">Conectando ao servidor... (pode levar até 1 minuto se ele estava dormindo)</div>
+
+    <div id="botaoGoogle" style="margin-top:12px; display:flex; justify-content:center;"></div>
 
     <button id="btnSemConta" class="link-discreto" style="margin-top:14px;">Continuar sem conta (dados só neste aparelho)</button>
   </div>
@@ -58,6 +71,10 @@
       <span class="brand-name">saldo.</span>
     </div>
     <div class="topbar-direita">
+      <button id="btnPerfil" class="btn-perfil-topo" title="Sua conta">
+        <img id="perfilTopoFoto" style="display:none;">
+        <span id="perfilTopoInicial">?</span>
+      </button>
       <button id="btnConfig" class="btn-tema" title="Configurações">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -68,6 +85,31 @@
       <div class="topbar-date" id="dataAtual"></div>
     </div>
   </header>
+
+  <div id="painelPerfilTopo" class="painel-perfil-topo escondido">
+    <div class="painel-perfil-cabecalho">
+      <div class="perfil-foto-wrap" style="width:56px;height:56px;">
+        <img id="perfilTopoFotoGrande" class="perfil-foto" style="display:none;width:56px;height:56px;">
+        <div id="perfilTopoPlaceholderGrande" class="perfil-foto-placeholder" style="width:56px;height:56px;font-size:22px;">👤</div>
+        <button id="btnFotoTopo" class="btn-foto-editar" title="Alterar foto">✎</button>
+        <input type="file" id="inputFotoTopo" accept="image/*" hidden>
+      </div>
+      <div>
+        <div class="painel-perfil-nome" id="painelPerfilNome">—</div>
+        <div class="painel-perfil-email" id="painelPerfilEmail">—</div>
+      </div>
+    </div>
+    <div class="painel-perfil-linha">
+      <span>Conta criada em</span>
+      <b id="painelPerfilData">—</b>
+    </div>
+    <div class="painel-perfil-linha">
+      <span>Plano atual</span>
+      <b id="painelPerfilPlano">Free</b>
+    </div>
+    <button id="btnPerfilConfig" class="link-discreto" style="margin-top:10px;">Abrir configurações completas</button>
+    <button id="btnPerfilSair" class="link-discreto link-perigo" style="margin-top:6px;">Sair da conta</button>
+  </div>
 
   <section class="hero">
     <div class="hero-saudacao" id="saudacao">Olá</div>
@@ -130,6 +172,11 @@
           <input type="checkbox" id="checkRecorrente">
           <span>Repetir todo mês (gasto/ganho fixo)</span>
         </label>
+        <div class="form-row" id="linhaDiaRecorrente" style="display:none;margin-top:6px;">
+          <select id="diaRecorrente" class="select-cat">
+            <!-- opções preenchidas via JS: dia 1 a 28 -->
+          </select>
+        </div>
 
         <div class="dica-teclado">Enter adiciona · Esc cancela edição</div>
       </form>
@@ -230,111 +277,101 @@
 
   </section>
 
-  <!-- ABA CONFIG -->
-  <section class="tab-conteudo" id="tab-config">
+  <!-- CONFIGURAÇÕES — tela cheia, estilo painel de controle -->
+  <div class="config-fullscreen escondido" id="configFullscreen">
+    <div class="config-fs-topo">
+      <button id="btnFecharConfig" class="config-fs-voltar">‹ Voltar pro app</button>
+      <span class="config-fs-titulo">Configurações</span>
+    </div>
+    <div class="config-fs-corpo">
+      <nav class="config-sidebar">
+        <button class="config-side-item active" data-secao="perfil">
+          <span class="config-side-icone">👤</span> Perfil
+        </button>
+        <button class="config-side-item" data-secao="plano">
+          <span class="config-side-icone">💳</span> Plano e pagamentos
+        </button>
+        <button class="config-side-item" data-secao="dev">
+          <span class="config-side-icone">🛠️</span> Modo desenvolvedor
+        </button>
+        <button class="config-side-item" data-secao="sobre">
+          <span class="config-side-icone">ℹ️</span> Sobre e versão
+        </button>
+        <button class="config-side-item config-side-perigo" data-secao="sair">
+          <span class="config-side-icone">🚪</span> Sair
+        </button>
+      </nav>
 
-    <!-- Menu principal de config -->
-    <section class="painel" id="configMenu">
-      <div class="config-linha" data-secao="perfil">
-        <div class="config-linha-icone">👤</div>
-        <div class="config-linha-texto">
-          <div class="config-linha-titulo">Perfil</div>
-          <div class="config-linha-sub">Nome, foto e e-mail</div>
-        </div>
-        <div class="config-linha-seta">›</div>
-      </div>
-      <div class="config-linha" data-secao="plano">
-        <div class="config-linha-icone">💳</div>
-        <div class="config-linha-texto">
-          <div class="config-linha-titulo">Plano e pagamentos</div>
-          <div class="config-linha-sub" id="resumoPlanoMenu">Free</div>
-        </div>
-        <div class="config-linha-seta">›</div>
-      </div>
-      <div class="config-linha" data-secao="dev">
-        <div class="config-linha-icone">🛠️</div>
-        <div class="config-linha-texto">
-          <div class="config-linha-titulo">Modo desenvolvedor</div>
-          <div class="config-linha-sub" id="resumoDevMenu">Desligado</div>
-        </div>
-        <div class="config-linha-seta">›</div>
-      </div>
-      <div class="config-linha" data-secao="sobre">
-        <div class="config-linha-icone">ℹ️</div>
-        <div class="config-linha-texto">
-          <div class="config-linha-titulo">Sobre e versão</div>
-          <div class="config-linha-sub">saldo. v1.0</div>
-        </div>
-        <div class="config-linha-seta">›</div>
-      </div>
-      <div class="config-linha config-linha-perigo" data-secao="sair">
-        <div class="config-linha-icone">🚪</div>
-        <div class="config-linha-texto">
-          <div class="config-linha-titulo">Sair</div>
-          <div class="config-linha-sub">Trocar de usuário neste aparelho</div>
-        </div>
-        <div class="config-linha-seta">›</div>
-      </div>
-    </section>
+      <div class="config-conteudo-area">
 
-    <!-- Sub-seção: Perfil -->
-    <section class="painel config-sub" id="secaoPerfil" style="display:none;">
-      <button class="config-voltar">‹ Configurações</button>
-      <div class="perfil-topo">
-        <div class="perfil-foto-wrap">
-          <img id="perfilFotoImg" class="perfil-foto" style="display:none">
-          <div id="perfilFotoPlaceholder" class="perfil-foto-placeholder">👤</div>
-          <button id="btnFoto" class="btn-foto-editar" title="Alterar foto">✎</button>
-          <input type="file" id="inputFoto" accept="image/*" hidden>
+        <div class="config-fs-secao ativa" id="fsPerfil">
+          <h2>Perfil</h2>
+          <p class="config-fs-explica">Como seu nome e foto aparecem no app.</p>
+          <div class="perfil-topo">
+            <div class="perfil-foto-wrap">
+              <img id="perfilFotoImg" class="perfil-foto" style="display:none">
+              <div id="perfilFotoPlaceholder" class="perfil-foto-placeholder">👤</div>
+              <button id="btnFoto" class="btn-foto-editar" title="Alterar foto">✎</button>
+              <input type="file" id="inputFoto" accept="image/*" hidden>
+            </div>
+            <div class="perfil-campos">
+              <label class="campo-label">Seu nome</label>
+              <input type="text" id="configNome" maxlength="20" placeholder="Seu nome">
+            </div>
+          </div>
+          <label class="campo-label">E-mail (avisos dentro do app)</label>
+          <input type="email" id="configEmail" placeholder="seuemail@gmail.com">
+          <p class="campo-aviso">Sem servidor próprio, não dá pra mandar e-mail de verdade — os avisos aparecem só aqui dentro do app.</p>
+          <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
         </div>
-        <div class="perfil-campos">
-          <label class="campo-label">Seu nome</label>
-          <input type="text" id="configNome" maxlength="20" placeholder="Seu nome">
+
+        <div class="config-fs-secao" id="fsPlano">
+          <h2>Plano e pagamentos</h2>
+          <p class="config-fs-explica">Seu plano atual: <b id="planoAtualNome">Free</b>. Compare o que cada um oferece antes de decidir.</p>
+          <div id="comparativoPlanos" class="comparativo"></div>
         </div>
-      </div>
-      <label class="campo-label">E-mail (avisos dentro do app)</label>
-      <input type="email" id="configEmail" placeholder="seuemail@gmail.com">
-      <p class="campo-aviso">Sem servidor próprio, não dá pra mandar e-mail de verdade — os avisos aparecem só aqui dentro do app.</p>
-      <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;">Salvar perfil</button>
-    </section>
 
-    <!-- Sub-seção: Plano -->
-    <section class="painel config-sub" id="secaoPlano" style="display:none;">
-      <button class="config-voltar">‹ Configurações</button>
-      <div class="lista-header" style="margin-bottom:14px;">
-        <span>Seu plano: <b id="planoAtualNome">Free</b></span>
-      </div>
-      <div id="comparativoPlanos" class="comparativo"></div>
-    </section>
+        <div class="config-fs-secao" id="fsDev">
+          <h2>Modo desenvolvedor</h2>
+          <p class="config-fs-explica">Desbloqueia todas as funções Pro e Ultimate pra testar, sem precisar comprar de verdade.</p>
+          <div id="devStatus" class="dev-status">Desligado.</div>
+          <div class="form-row" id="devForm">
+            <input type="password" id="devSenha" placeholder="Senha" maxlength="10">
+            <button id="btnDevAtivar" class="btn-ghost-sm">Ativar</button>
+          </div>
+          <button id="btnDevDesativar" class="link-discreto" style="display:none;margin-top:8px;">Desativar modo desenvolvedor</button>
+        </div>
 
-    <!-- Sub-seção: Modo Dev -->
-    <section class="painel config-sub" id="secaoDev" style="display:none;">
-      <button class="config-voltar">‹ Configurações</button>
-      <div class="lista-header" style="margin-bottom: 14px;">
-        <span>Modo desenvolvedor</span>
-      </div>
-      <div id="devStatus" class="dev-status">Desbloqueia todas as funções Pro e Ultimate.</div>
-      <div class="form-row" id="devForm">
-        <input type="password" id="devSenha" placeholder="Senha" maxlength="10">
-        <button id="btnDevAtivar" class="btn-ghost-sm">Ativar</button>
-      </div>
-      <button id="btnDevDesativar" class="link-discreto" style="display:none;margin-top:8px;">Desativar modo desenvolvedor</button>
-    </section>
+        <div class="config-fs-secao" id="fsSobre">
+          <h2>Sobre e versão</h2>
+          <div class="sobre-conteudo" style="text-align:left;padding:0;">
+            <div class="sobre-icone">💰</div>
+            <div class="sobre-nome">saldo.</div>
+            <div class="sobre-versao">Versão 1.0.0</div>
+            <p class="sobre-texto" style="margin:0;max-width:100%;">Um app simples de controle de gastos e ganhos, feito para aprender e organizar a vida financeira.</p>
+          </div>
+        </div>
 
-    <!-- Sub-seção: Sobre -->
-    <section class="painel config-sub" id="secaoSobre" style="display:none;">
-      <button class="config-voltar">‹ Configurações</button>
-      <div class="sobre-conteudo">
-        <div class="sobre-icone">💰</div>
-        <div class="sobre-nome">saldo.</div>
-        <div class="sobre-versao">Versão 1.0.0</div>
-        <p class="sobre-texto">Um app simples de controle de gastos e ganhos, feito para aprender e organizar a vida financeira.</p>
       </div>
-    </section>
+    </div>
+  </div>
 
-  </section>
-
-  <footer class="rodape">
+  <!-- Modal de boas-vindas de compra (modo dev) -->
+  <div class="modal-overlay escondido" id="modalCompra">
+    <div class="modal-card">
+      <div class="modal-icone" style="background:linear-gradient(135deg,#22d3ee,#3b82f6);">🎉</div>
+      <h1>Parabéns pelo Ultimate!</h1>
+      <p class="modal-explica">Agora você tem acesso a tudo. Aqui vai um resumo rápido do que mudou:</p>
+      <ul class="tutorial-lista">
+        <li>🏷️ <b>Categorias</b> — organiza cada gasto por tipo, no formulário de Lançar</li>
+        <li>🔁 <b>Gastos fixos</b> — marca "repetir todo mês" e escolhe o dia</li>
+        <li>🔍 <b>Busca</b> — acha qualquer lançamento pelo nome, na aba Análise</li>
+        <li>⚠️ <b>Limite de gasto</b> — define um teto mensal e recebe aviso</li>
+        <li>🎯 <b>Metas</b> e <b>foto de perfil</b> liberadas</li>
+      </ul>
+      <button id="btnFecharModalCompra" class="btn-add" style="margin-top:14px;">Entendi, vamos lá!</button>
+    </div>
+  </div>  <footer class="rodape">
     <button id="btnExportar" class="link-discreto">Exportar backup</button>
     <span class="rodape-sep">·</span>
     <button id="btnImportar" class="link-discreto">Importar backup</button>

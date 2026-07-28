@@ -595,6 +595,13 @@ input:focus {
   gap: 10px;
 }
 
+#authCodigo {
+  text-align: center;
+  font-size: 22px;
+  letter-spacing: 8px;
+  font-weight: 700;
+}
+
 #formAuth input {
   text-align: left;
   font-size: 14px;
@@ -904,6 +911,223 @@ input:focus {
   font-weight: 700;
   font-size: 14px;
   white-space: nowrap;
+}
+
+/* Botão de perfil no topo */
+.btn-perfil-topo {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.btn-perfil-topo img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Painel dropdown de perfil */
+.painel-perfil-topo {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  z-index: 90;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  animation: popIn 0.25s ease both;
+}
+
+.painel-perfil-topo.escondido { display: none; }
+
+.painel-perfil-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.painel-perfil-nome { font-weight: 700; font-size: 14px; }
+.painel-perfil-email { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+.painel-perfil-linha {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  padding: 6px 0;
+}
+
+.painel-perfil-linha b { color: var(--text); }
+
+/* Configurações em tela cheia */
+.config-fullscreen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+}
+
+.config-fullscreen.escondido { display: none; }
+
+.config-fs-topo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.config-fs-voltar {
+  background: none;
+  border: none;
+  color: var(--blue-bright);
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.config-fs-titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.config-fs-corpo {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.config-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--line);
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.config-side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 11px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.config-side-item:hover { background: var(--panel-2); }
+
+.config-side-item.active {
+  background: rgba(59,130,246,0.15);
+  color: var(--blue-bright);
+}
+
+.config-side-icone { font-size: 15px; }
+
+.config-side-perigo { color: var(--red); }
+
+.config-conteudo-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px 60px;
+  max-width: 640px;
+}
+
+.config-fs-secao { display: none; }
+.config-fs-secao.ativa { display: block; animation: fadeUp 0.3s ease both; }
+
+.config-fs-secao h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.config-fs-explica {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Senha com olho */
+.campo-senha-wrap {
+  position: relative;
+  display: flex;
+}
+
+.campo-senha-wrap input {
+  flex: 1;
+  padding-right: 42px;
+}
+
+.btn-olho-senha {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 15px;
+}
+
+/* Modal de compra / tutorial */
+.tutorial-lista {
+  list-style: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.tutorial-lista li {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.tutorial-lista b { color: var(--text); }
+
+@media (max-width: 640px) {
+  .config-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 10px;
+  }
+  .config-fs-corpo { flex-direction: column; }
+  .config-side-item { flex-shrink: 0; }
+  .config-conteudo-area { padding: 20px 18px 60px; max-width: 100%; }
+  .painel-perfil-topo { right: 12px; left: 12px; width: auto; }
 }
 
 /* Menu de configurações */

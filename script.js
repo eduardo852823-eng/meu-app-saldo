@@ -14,6 +14,7 @@ let emailUsuario = '';
 let fotoUsuario = '';
 let limiteGasto = null;
 let tokenSessao = '';
+let criadoEm = '';
 
 // --- Chaves de armazenamento ---
 const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
@@ -26,9 +27,11 @@ const CHAVE_DEV = 'saldo_dev';
 const CHAVE_EMAIL = 'saldo_email';
 const CHAVE_FOTO = 'saldo_foto';
 const CHAVE_LIMITE = 'saldo_limite';
+const CHAVE_CRIADOEM = 'saldo_criadoem';
 const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
 const CHAVE_TOKEN = 'saldo_token';
+const GOOGLE_CLIENT_ID = 'COLOQUE_SEU_CLIENT_ID_AQUI.apps.googleusercontent.com';
 
 const CATEGORIAS = {
   comida:     { nome: 'Comida',      icone: '🍔' },
@@ -97,9 +100,44 @@ const painelLimite = document.getElementById('painelLimite');
 const limiteValorInput = document.getElementById('limiteValor');
 const btnSalvarLimite = document.getElementById('btnSalvarLimite');
 const limiteAvisoEl = document.getElementById('limiteAviso');
+
+// Perfil no topo
+const btnPerfil = document.getElementById('btnPerfil');
+const perfilTopoFoto = document.getElementById('perfilTopoFoto');
+const perfilTopoInicial = document.getElementById('perfilTopoInicial');
+const painelPerfilTopo = document.getElementById('painelPerfilTopo');
+const perfilTopoFotoGrande = document.getElementById('perfilTopoFotoGrande');
+const perfilTopoPlaceholderGrande = document.getElementById('perfilTopoPlaceholderGrande');
+const btnFotoTopo = document.getElementById('btnFotoTopo');
+const inputFotoTopo = document.getElementById('inputFotoTopo');
+const painelPerfilNome = document.getElementById('painelPerfilNome');
+const painelPerfilEmail = document.getElementById('painelPerfilEmail');
+const painelPerfilData = document.getElementById('painelPerfilData');
+const painelPerfilPlano = document.getElementById('painelPerfilPlano');
+const btnPerfilConfig = document.getElementById('btnPerfilConfig');
+const btnPerfilSair = document.getElementById('btnPerfilSair');
+
+// Config em tela cheia
+const configFullscreen = document.getElementById('configFullscreen');
+const btnFecharConfig = document.getElementById('btnFecharConfig');
+const configSideItens = document.querySelectorAll('.config-side-item');
+
+// Senha visível
+const btnMostrarSenha = document.getElementById('btnMostrarSenha');
+
+// Recorrente com dia
+const linhaDiaRecorrente = document.getElementById('linhaDiaRecorrente');
+const diaRecorrenteSelect = document.getElementById('diaRecorrente');
+
+// Modal de compra
+const modalCompra = document.getElementById('modalCompra');
+const btnFecharModalCompra = document.getElementById('btnFecharModalCompra');
 const comparacaoEl = document.getElementById('comparacao');
 const modalBoasVindas = document.getElementById('modalBoasVindas');
 const formAuth = document.getElementById('formAuth');
+const formCodigo = document.getElementById('formCodigo');
+const authCodigo = document.getElementById('authCodigo');
+const btnReenviarCodigo = document.getElementById('btnReenviarCodigo');
 const authTabs = document.querySelectorAll('.auth-tab');
 const authNome = document.getElementById('authNome');
 const authEmail = document.getElementById('authEmail');
@@ -136,6 +174,7 @@ function salvar() {
     localStorage.setItem(CHAVE_FOTO, fotoUsuario);
     localStorage.setItem(CHAVE_LIMITE, limiteGasto === null ? '' : String(limiteGasto));
     localStorage.setItem(CHAVE_TOKEN, tokenSessao);
+    localStorage.setItem(CHAVE_CRIADOEM, criadoEm);
   } catch (e) {
     console.warn('Não foi possível salvar os dados localmente.', e);
   }
@@ -162,6 +201,7 @@ function carregar() {
     const limite = localStorage.getItem(CHAVE_LIMITE);
     if (limite) limiteGasto = parseFloat(limite);
     tokenSessao = localStorage.getItem(CHAVE_TOKEN) || '';
+    criadoEm = localStorage.getItem(CHAVE_CRIADOEM) || '';
   } catch (e) {
     console.warn('Não foi possível carregar os dados salvos.', e);
     lancamentos = [];
@@ -189,8 +229,7 @@ function aplicarGating() {
     ? 'Ultimate (modo dev)'
     : (planoAtual === 'pro' ? 'Pro' : planoAtual === 'ultimate' ? 'Ultimate' : 'Free');
 
-  document.getElementById('resumoPlanoMenu').textContent = planoAtualNomeEl.textContent;
-  document.getElementById('resumoDevMenu').textContent = devAtivo ? 'Ativado' : 'Desligado';
+  atualizarBotaoPerfilTopo();
 
   devStatusEl.textContent = devAtivo
     ? 'Ativo — todas as funções Pro e Ultimate liberadas.'
@@ -207,9 +246,14 @@ btnDevAtivar.addEventListener('click', () => {
     salvar();
     aplicarGating();
     preencherCategorias();
+    modalCompra.classList.remove('escondido');
   } else {
     alert('Senha incorreta.');
   }
+});
+
+btnFecharModalCompra.addEventListener('click', () => {
+  modalCompra.classList.add('escondido');
 });
 
 btnDevDesativar.addEventListener('click', () => {
@@ -256,47 +300,102 @@ const DADOS_PLANOS = [
 ];
 
 // --- Botão de configurações (canto superior direito) ---
-const btnConfig = document.getElementById('btnConfig');
-btnConfig.addEventListener('click', () => {
-  tabBtns.forEach(b => b.classList.remove('active'));
-  tabConteudos.forEach(c => c.classList.remove('ativo'));
-  document.getElementById('tab-config').classList.add('ativo');
-  tabsDica.textContent = DICAS_ABA.config;
-  mostrarMenuConfig();
-});
-
-function mostrarMenuConfig() {
-  document.getElementById('configMenu').style.display = 'block';
-  document.querySelectorAll('.config-sub').forEach(s => s.style.display = 'none');
+function abrirConfig() {
+  configFullscreen.classList.remove('escondido');
+  painelPerfilTopo.classList.add('escondido');
 }
 
-document.querySelectorAll('.config-linha').forEach(linha => {
-  linha.addEventListener('click', () => {
-    const secao = linha.dataset.secao;
+document.getElementById('btnConfig').addEventListener('click', abrirConfig);
+btnFecharConfig.addEventListener('click', () => configFullscreen.classList.add('escondido'));
+btnPerfilConfig.addEventListener('click', abrirConfig);
+
+configSideItens.forEach(item => {
+  item.addEventListener('click', () => {
+    const secao = item.dataset.secao;
+
     if (secao === 'sair') {
-      if (!confirm('Isso vai sair da sua conta neste aparelho. Seus dados continuam salvos no servidor (se você tiver conta) e você pode entrar de novo quando quiser. Continuar?')) return;
-      nomeUsuario = '';
-      emailUsuario = '';
-      fotoUsuario = '';
-      tokenSessao = '';
-      localStorage.removeItem(CHAVE_NOME);
-      localStorage.removeItem(CHAVE_EMAIL);
-      localStorage.removeItem(CHAVE_FOTO);
-      localStorage.removeItem(CHAVE_TOKEN);
-      location.reload();
+      confirmarSair();
       return;
     }
-    document.getElementById('configMenu').style.display = 'none';
-    document.querySelectorAll('.config-sub').forEach(s => s.style.display = 'none');
-    const alvo = document.getElementById(`secao${secao.charAt(0).toUpperCase()}${secao.slice(1)}`);
-    if (alvo) alvo.style.display = 'block';
+
+    configSideItens.forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.config-fs-secao').forEach(s => s.classList.remove('ativa'));
+    const alvo = document.getElementById(`fs${secao.charAt(0).toUpperCase()}${secao.slice(1)}`);
+    if (alvo) alvo.classList.add('ativa');
     if (secao === 'plano') renderizarComparativo();
     if (secao === 'perfil') carregarCamposPerfil();
   });
 });
 
-document.querySelectorAll('.config-voltar').forEach(btn => {
-  btn.addEventListener('click', mostrarMenuConfig);
+function confirmarSair() {
+  if (!confirm('Isso vai sair da sua conta neste aparelho. Seus dados continuam salvos no servidor (se você tiver conta) e você pode entrar de novo quando quiser. Continuar?')) return;
+  nomeUsuario = '';
+  emailUsuario = '';
+  fotoUsuario = '';
+  tokenSessao = '';
+  criadoEm = '';
+  localStorage.removeItem(CHAVE_NOME);
+  localStorage.removeItem(CHAVE_EMAIL);
+  localStorage.removeItem(CHAVE_FOTO);
+  localStorage.removeItem(CHAVE_TOKEN);
+  localStorage.removeItem(CHAVE_CRIADOEM);
+  location.reload();
+}
+
+// --- Perfil no topo (dropdown) ---
+function atualizarBotaoPerfilTopo() {
+  if (fotoUsuario) {
+    perfilTopoFoto.src = fotoUsuario;
+    perfilTopoFoto.style.display = 'block';
+    perfilTopoInicial.style.display = 'none';
+  } else {
+    perfilTopoFoto.style.display = 'none';
+    perfilTopoInicial.style.display = 'block';
+    perfilTopoInicial.textContent = nomeUsuario ? nomeUsuario.charAt(0).toUpperCase() : '?';
+  }
+}
+
+btnPerfil.addEventListener('click', () => {
+  painelPerfilNome.textContent = nomeUsuario || 'Sem nome';
+  painelPerfilEmail.textContent = emailUsuario || 'Modo local (sem conta)';
+  painelPerfilData.textContent = criadoEm
+    ? new Date(criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '—';
+  painelPerfilPlano.textContent = devAtivo ? 'Ultimate (dev)' : (planoAtual === 'pro' ? 'Pro' : planoAtual === 'ultimate' ? 'Ultimate' : 'Free');
+
+  if (fotoUsuario) {
+    perfilTopoFotoGrande.src = fotoUsuario;
+    perfilTopoFotoGrande.style.display = 'block';
+    perfilTopoPlaceholderGrande.style.display = 'none';
+  } else {
+    perfilTopoFotoGrande.style.display = 'none';
+    perfilTopoPlaceholderGrande.style.display = 'flex';
+  }
+
+  painelPerfilTopo.classList.toggle('escondido');
+});
+
+document.addEventListener('click', (e) => {
+  if (!painelPerfilTopo.contains(e.target) && !btnPerfil.contains(e.target)) {
+    painelPerfilTopo.classList.add('escondido');
+  }
+});
+
+btnPerfilSair.addEventListener('click', confirmarSair);
+
+btnFotoTopo.addEventListener('click', () => inputFotoTopo.click());
+inputFotoTopo.addEventListener('change', (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  const leitor = new FileReader();
+  leitor.onload = (evento) => {
+    fotoUsuario = evento.target.result;
+    salvar();
+    atualizarBotaoPerfilTopo();
+    carregarCamposPerfil();
+  };
+  leitor.readAsDataURL(arquivo);
 });
 
 function renderizarComparativo() {
@@ -459,6 +558,46 @@ authTabs.forEach(tab => {
   });
 });
 
+let emailPendenteVerificacao = '';
+
+async function finalizarLogin(dados) {
+  tokenSessao = dados.token;
+  nomeUsuario = dados.nome;
+  emailUsuario = dados.email;
+  lancamentos = [];
+  metaAlvo = null;
+
+  try {
+    const respDados = await fetch(API_URL + '/dados', {
+      headers: { Authorization: 'Bearer ' + tokenSessao }
+    });
+    if (respDados.ok) {
+      const dadosServidor = await respDados.json();
+      if (dadosServidor.lancamentos) {
+        lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
+      }
+      metaAlvo = dadosServidor.metaAlvo ?? null;
+      if (dadosServidor.criadoEm) criadoEm = dadosServidor.criadoEm;
+    }
+  } catch (erroDados) {
+    console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
+  }
+
+  salvar();
+  saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+  atualizarBotaoPerfilTopo();
+  modalBoasVindas.classList.add('escondido');
+  renderizarTudo();
+}
+
+function mostrarFormCodigo(email) {
+  emailPendenteVerificacao = email;
+  formAuth.style.display = 'none';
+  formCodigo.style.display = 'flex';
+  authErroEl.textContent = '';
+  authCodigo.focus();
+}
+
 formAuth.addEventListener('submit', async (e) => {
   e.preventDefault();
   authErroEl.textContent = '';
@@ -487,40 +626,73 @@ formAuth.addEventListener('submit', async (e) => {
     const dados = await resp.json();
 
     if (!resp.ok) {
+      if (dados.precisaVerificar) {
+        mostrarFormCodigo(dados.email || email);
+        return;
+      }
       authErroEl.textContent = dados.erro || 'Algo deu errado. Tenta de novo.';
       return;
     }
 
-    tokenSessao = dados.token;
-    nomeUsuario = dados.nome;
-    emailUsuario = dados.email;
-    salvar();
-
-    // Busca os dados salvos no servidor (se já existirem)
-    try {
-      const respDados = await fetch(API_URL + '/dados', {
-        headers: { Authorization: 'Bearer ' + tokenSessao }
-      });
-      if (respDados.ok) {
-        const dadosServidor = await respDados.json();
-        if (dadosServidor.lancamentos) {
-          lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
-        }
-        metaAlvo = dadosServidor.metaAlvo ?? null;
-        salvar();
-      }
-    } catch (erroDados) {
-      console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
+    if (dados.precisaVerificar) {
+      mostrarFormCodigo(dados.email);
+      return;
     }
 
-    saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
-    modalBoasVindas.classList.add('escondido');
-    renderizarTudo();
+    await finalizarLogin(dados);
   } catch (erro) {
     authErroEl.textContent = 'Não consegui conectar ao servidor. Confere sua internet ou tenta de novo em instantes (o servidor pode estar "acordando").';
   } finally {
     btnAuthSubmit.disabled = false;
     authCarregandoEl.style.display = 'none';
+  }
+});
+
+formCodigo.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authErroEl.textContent = '';
+  const codigo = authCodigo.value.trim();
+  if (!codigo) return;
+
+  authCarregandoEl.style.display = 'block';
+  try {
+    const resp = await fetch(API_URL + '/verificar-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailPendenteVerificacao, codigo })
+    });
+    const dados = await resp.json();
+
+    if (!resp.ok) {
+      authErroEl.textContent = dados.erro || 'Código incorreto.';
+      return;
+    }
+
+    await finalizarLogin(dados);
+  } catch (erro) {
+    authErroEl.textContent = 'Não consegui conectar ao servidor agora.';
+  } finally {
+    authCarregandoEl.style.display = 'none';
+  }
+});
+
+btnReenviarCodigo.addEventListener('click', async () => {
+  authErroEl.textContent = '';
+  try {
+    const resp = await fetch(API_URL + '/reenviar-codigo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailPendenteVerificacao })
+    });
+    const dados = await resp.json();
+    if (!resp.ok) {
+      authErroEl.textContent = dados.erro || 'Não consegui reenviar o código.';
+      return;
+    }
+    authErroEl.textContent = 'Código reenviado! Confere seu e-mail.';
+    authErroEl.style.color = 'var(--cyan)';
+  } catch (erro) {
+    authErroEl.textContent = 'Não consegui conectar ao servidor agora.';
   }
 });
 
@@ -532,6 +704,42 @@ btnSemConta.addEventListener('click', () => {
   saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
   modalBoasVindas.classList.add('escondido');
 });
+
+// --- Login com Google ---
+async function processarLoginGoogle(resposta) {
+  authErroEl.textContent = '';
+  authCarregandoEl.style.display = 'block';
+  try {
+    const resp = await fetch(API_URL + '/login-google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: resposta.credential })
+    });
+    const dados = await resp.json();
+
+    if (!resp.ok) {
+      authErroEl.textContent = dados.erro || 'Não consegui entrar com o Google.';
+      return;
+    }
+
+    await finalizarLogin(dados);
+  } catch (erro) {
+    authErroEl.textContent = 'Não consegui conectar ao servidor agora.';
+  } finally {
+    authCarregandoEl.style.display = 'none';
+  }
+}
+
+if (window.google && GOOGLE_CLIENT_ID.indexOf('COLOQUE_SEU') === -1) {
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: processarLoginGoogle
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('botaoGoogle'),
+    { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill' }
+  );
+}
 
 // --- Sincronizar com o servidor (se logado) ---
 async function sincronizarComServidor() {
@@ -549,6 +757,28 @@ async function sincronizarComServidor() {
     console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho).', erro);
   }
 }
+
+// --- Mostrar/ocultar senha no login ---
+btnMostrarSenha.addEventListener('click', () => {
+  const oculta = authSenha.type === 'password';
+  authSenha.type = oculta ? 'text' : 'password';
+  btnMostrarSenha.textContent = oculta ? '🙈' : '👁';
+});
+
+// --- Preencher dias do mês pro gasto recorrente ---
+function preencherDiasRecorrente() {
+  diaRecorrenteSelect.innerHTML = '';
+  for (let dia = 1; dia <= 28; dia++) {
+    const opt = document.createElement('option');
+    opt.value = dia;
+    opt.textContent = `Todo dia ${dia}`;
+    diaRecorrenteSelect.appendChild(opt);
+  }
+}
+
+checkRecorrente.addEventListener('change', () => {
+  linhaDiaRecorrente.style.display = checkRecorrente.checked ? 'flex' : 'none';
+});
 
 // --- Abas ---
 const DICAS_ABA = {
@@ -706,6 +936,7 @@ form.addEventListener('submit', (e) => {
       tipo: tipoAtual,
       categoria: temRecurso('pro') ? selectCat.value : '',
       recorrente: temRecurso('pro') && checkRecorrente.checked,
+      diaRecorrente: (temRecurso('pro') && checkRecorrente.checked) ? parseInt(diaRecorrenteSelect.value) : null,
       data: new Date()
     });
   }
@@ -786,7 +1017,7 @@ function criarItemEl(item) {
   const icone = cat ? cat.icone : ICONE_TIPO[item.tipo];
   const sinal = item.tipo === 'saida' ? '-' : '+';
   const dataFormatada = item.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const tagRecorrente = item.recorrente ? '<span class="item-cat-tag">🔁 Fixo</span>' : '';
+  const tagRecorrente = item.recorrente ? `<span class="item-cat-tag">🔁 Fixo${item.diaRecorrente ? ' (dia ' + item.diaRecorrente + ')' : ''}</span>` : '';
   const tagCat = cat ? `<span class="item-cat-tag">${cat.nome}</span>` : '';
 
   li.innerHTML = `
@@ -1023,6 +1254,7 @@ async function buscarDadosServidorAoAbrir() {
         lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
       }
       metaAlvo = dadosServidor.metaAlvo ?? null;
+      if (dadosServidor.criadoEm) { criadoEm = dadosServidor.criadoEm; salvar(); }
       renderizarTudo();
     } else if (resp.status === 401) {
       // Token expirado/inválido — desloga silenciosamente
@@ -1041,6 +1273,8 @@ verificarNome();
 aplicarSaldoOculto();
 aplicarGating();
 preencherCategorias();
+preencherDiasRecorrente();
 carregarCamposPerfil();
+atualizarBotaoPerfilTopo();
 renderizarTudo();
 buscarDadosServidorAoAbrir();
