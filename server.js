@@ -2,37 +2,55 @@ const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ==============================
-// "Banco de dados" simples em arquivo JSON
-// (pra um projeto maior, o ideal seria um banco de verdade tipo MongoDB/Postgres,
-//  mas isso já funciona bem pra aprender e pra poucos usuários)
+// Conexão com o MongoDB Atlas (banco de verdade, não se apaga quando o
+// servidor reinicia — ao contrário do arquivo JSON que usávamos antes)
+// A string de conexão vem de uma variável de ambiente (MONGODB_URI),
+// configurada no painel do Render.
 // ==============================
-const CAMINHO_DB = path.join(__dirname, 'dados.json');
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Conectado ao MongoDB com sucesso!'))
+  .catch(erro => console.error('Erro ao conectar no MongoDB:', erro.message));
 
-function lerDB() {
-  if (!fs.existsSync(CAMINHO_DB)) {
-    fs.writeFileSync(CAMINHO_DB, JSON.stringify({ usuarios: [] }, null, 2));
-  }
-  return JSON.parse(fs.readFileSync(CAMINHO_DB, 'utf8'));
-}
+const lancamentoSchema = new mongoose.Schema({
+  id: Number,
+  descricao: String,
+  valor: Number,
+  tipo: String,
+  categoria: String,
+  recorrente: Boolean,
+  data: Date
+}, { _id: false });
 
-function salvarDB(db) {
-  fs.writeFileSync(CAMINHO_DB, JSON.stringify(db, null, 2));
-}
+const usuarioSchema = new mongoose.Schema({
+  nome: String,
+  email: { type: String, unique: true, lowercase: true },
+  sal: String,
+  senhaHash: String,
+  googleId: String,
+  token: String,
+  verificado: { type: Boolean, default: false },
+  codigoVerificacao: String,
+  codigoExpira: Date,
+  lancamentos: [lancamentoSchema],
+  metaAlvo: { type: Number, default: null },
+  criadoEm: { type: Date, default: Date.now }
+});
+
+const Usuario = mongoose.model('Usuario', usuarioSchema);
 
 // ==============================
-// Senha: nunca guardamos a senha em texto puro.
-// Aqui usamos hash simples (sha256 + sal). Pra produção de verdade,
-// o ideal é usar a biblioteca "bcrypt", mas isso já é bem mais seguro
-// que guardar a senha crua.
+// Senha: hash com sal (nunca guardamos a senha em texto puro)
 // ==============================
 function gerarHash(senha, sal) {
   return crypto.createHash('sha256').update(senha + sal).digest('hex');
@@ -42,10 +60,12 @@ function gerarToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+function gerarCodigo() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
 // ==============================
-// E-mail (Nodemailer)
-// As credenciais vêm de variáveis de ambiente — configuradas no painel do
-// Render, NUNCA escritas direto aqui no código.
+// E-mail (Nodemailer) — credenciais vêm de variáveis de ambiente
 // ==============================
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -75,14 +95,12 @@ async function enviarEmail(destinatario, assunto, texto) {
 
 // ==============================
 // Middleware de autenticação
-// Verifica se o token enviado no cabeçalho pertence a um usuário válido
 // ==============================
-function autenticar(req, res, next) {
+async function autenticar(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ erro: 'Não autenticado.' });
 
-  const db = lerDB();
-  const usuario = db.usuarios.find(u => u.token === token);
+  const usuario = await Usuario.findOne({ token });
   if (!usuario) return res.status(401).json({ erro: 'Sessão inválida. Faça login de novo.' });
 
   req.usuario = usuario;
@@ -98,118 +116,240 @@ app.get('/', (req, res) => {
 });
 
 // Cadastro
-app.post('/cadastro', (req, res) => {
-  const { nome, email, senha } = req.body;
-  if (!nome || !email || !senha) {
-    return res.status(400).json({ erro: 'Preencha nome, e-mail e senha.' });
+app.post('/cadastro', async (req, res) => {
+  try {
+    const { nome, email, senha } = req.body;
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ erro: 'Preencha nome, e-mail e senha.' });
+    }
+
+    const jaExiste = await Usuario.findOne({ email: email.toLowerCase() });
+    if (jaExiste && jaExiste.verificado) {
+      return res.status(400).json({ erro: 'Já existe uma conta com esse e-mail.' });
+    }
+
+    const sal = crypto.randomBytes(8).toString('hex');
+    const codigo = gerarCodigo();
+    const dadosUsuario = {
+      nome,
+      email: email.toLowerCase(),
+      sal,
+      senhaHash: gerarHash(senha, sal),
+      verificado: false,
+      codigoVerificacao: codigo,
+      codigoExpira: new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
+    };
+
+    if (jaExiste) {
+      Object.assign(jaExiste, dadosUsuario);
+      await jaExiste.save();
+    } else {
+      await Usuario.create({ ...dadosUsuario, lancamentos: [], metaAlvo: null });
+    }
+
+    await enviarEmail(
+      email,
+      'Confirme seu e-mail — saldo.',
+      `Olá, ${nome}!\n\nSeu código de confirmação é: ${codigo}\n\nEle vale por 15 minutos.`
+    );
+
+    res.json({ precisaVerificar: true, email: email.toLowerCase() });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro no servidor ao criar a conta.' });
   }
+});
 
-  const db = lerDB();
-  const jaExiste = db.usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (jaExiste) {
-    return res.status(400).json({ erro: 'Já existe uma conta com esse e-mail.' });
+// Confirmar código de verificação
+app.post('/verificar-email', async (req, res) => {
+  try {
+    const { email, codigo } = req.body;
+    if (!email || !codigo) return res.status(400).json({ erro: 'Preencha o código.' });
+
+    const usuario = await Usuario.findOne({ email: email.toLowerCase() });
+    if (!usuario) return res.status(400).json({ erro: 'Conta não encontrada.' });
+
+    if (usuario.verificado) {
+      return res.status(400).json({ erro: 'Essa conta já foi verificada. Tenta entrar direto.' });
+    }
+
+    if (!usuario.codigoVerificacao || usuario.codigoVerificacao !== codigo) {
+      return res.status(400).json({ erro: 'Código incorreto.' });
+    }
+
+    if (usuario.codigoExpira < new Date()) {
+      return res.status(400).json({ erro: 'Código expirado. Pede um novo.' });
+    }
+
+    usuario.verificado = true;
+    usuario.codigoVerificacao = undefined;
+    usuario.codigoExpira = undefined;
+    usuario.token = gerarToken();
+    await usuario.save();
+
+    res.json({ token: usuario.token, nome: usuario.nome, email: usuario.email });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro no servidor ao verificar o código.' });
   }
+});
 
-  const sal = crypto.randomBytes(8).toString('hex');
-  const novoUsuario = {
-    id: crypto.randomUUID(),
-    nome,
-    email: email.toLowerCase(),
-    sal,
-    senhaHash: gerarHash(senha, sal),
-    token: gerarToken(),
-    lancamentos: [],
-    metaAlvo: null,
-    criadoEm: new Date().toISOString()
-  };
+// Reenviar código de verificação
+app.post('/reenviar-codigo', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const usuario = await Usuario.findOne({ email: email?.toLowerCase() });
+    if (!usuario) return res.status(400).json({ erro: 'Conta não encontrada.' });
+    if (usuario.verificado) return res.status(400).json({ erro: 'Essa conta já está verificada.' });
 
-  db.usuarios.push(novoUsuario);
-  salvarDB(db);
+    const codigo = gerarCodigo();
+    usuario.codigoVerificacao = codigo;
+    usuario.codigoExpira = new Date(Date.now() + 15 * 60 * 1000);
+    await usuario.save();
 
-  res.json({
-    token: novoUsuario.token,
-    nome: novoUsuario.nome,
-    email: novoUsuario.email
-  });
+    await enviarEmail(
+      usuario.email,
+      'Novo código de confirmação — saldo.',
+      `Seu novo código é: ${codigo}\n\nEle vale por 15 minutos.`
+    );
+
+    res.json({ ok: true });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro no servidor ao reenviar o código.' });
+  }
 });
 
 // Login
-app.post('/login', (req, res) => {
-  const { email, senha } = req.body;
-  if (!email || !senha) {
-    return res.status(400).json({ erro: 'Preencha e-mail e senha.' });
+app.post('/login', async (req, res) => {
+  try {
+    const { email, senha } = req.body;
+    if (!email || !senha) {
+      return res.status(400).json({ erro: 'Preencha e-mail e senha.' });
+    }
+
+    const usuario = await Usuario.findOne({ email: email.toLowerCase() });
+    if (!usuario) {
+      return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
+    }
+
+    if (!usuario.verificado) {
+      return res.status(400).json({ erro: 'Confirma seu e-mail antes de entrar.', precisaVerificar: true, email: usuario.email });
+    }
+
+    const hashDigitado = gerarHash(senha, usuario.sal);
+    if (hashDigitado !== usuario.senhaHash) {
+      return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
+    }
+
+    usuario.token = gerarToken();
+    await usuario.save();
+
+    res.json({
+      token: usuario.token,
+      nome: usuario.nome,
+      email: usuario.email
+    });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro no servidor ao entrar.' });
   }
-
-  const db = lerDB();
-  const usuario = db.usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (!usuario) {
-    return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
-  }
-
-  const hashDigitado = gerarHash(senha, usuario.sal);
-  if (hashDigitado !== usuario.senhaHash) {
-    return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
-  }
-
-  // Gera um novo token a cada login
-  usuario.token = gerarToken();
-  salvarDB(db);
-
-  res.json({
-    token: usuario.token,
-    nome: usuario.nome,
-    email: usuario.email
-  });
 });
 
-// Pegar dados do usuário logado (lançamentos, meta)
+// Login com Google
+app.post('/login-google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ erro: 'Credencial do Google ausente.' });
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const payload = ticket.getPayload();
+    const email = payload.email.toLowerCase();
+    const nome = payload.name || 'Usuário';
+
+    let usuario = await Usuario.findOne({ email });
+
+    if (!usuario) {
+      usuario = await Usuario.create({
+        nome,
+        email,
+        googleId: payload.sub,
+        verificado: true,
+        token: gerarToken(),
+        lancamentos: [],
+        metaAlvo: null
+      });
+    } else {
+      usuario.token = gerarToken();
+      usuario.verificado = true;
+      if (!usuario.googleId) usuario.googleId = payload.sub;
+      await usuario.save();
+    }
+
+    res.json({ token: usuario.token, nome: usuario.nome, email: usuario.email });
+  } catch (erro) {
+    console.error('Erro no login com Google:', erro.message);
+    res.status(400).json({ erro: 'Não foi possível verificar o login do Google.' });
+  }
+});
+
+// Pegar dados do usuário logado
 app.get('/dados', autenticar, (req, res) => {
   res.json({
     nome: req.usuario.nome,
     email: req.usuario.email,
     lancamentos: req.usuario.lancamentos,
-    metaAlvo: req.usuario.metaAlvo
+    metaAlvo: req.usuario.metaAlvo,
+    criadoEm: req.usuario.criadoEm
   });
 });
 
-// Salvar dados do usuário logado (substitui tudo, igual o backup local)
-app.post('/dados', autenticar, (req, res) => {
-  const { lancamentos, metaAlvo } = req.body;
-
-  const db = lerDB();
-  const usuario = db.usuarios.find(u => u.id === req.usuario.id);
-  usuario.lancamentos = lancamentos || [];
-  usuario.metaAlvo = metaAlvo ?? null;
-  salvarDB(db);
-
-  res.json({ ok: true });
+// Salvar dados do usuário logado
+app.post('/dados', autenticar, async (req, res) => {
+  try {
+    const { lancamentos, metaAlvo } = req.body;
+    req.usuario.lancamentos = lancamentos || [];
+    req.usuario.metaAlvo = metaAlvo ?? null;
+    await req.usuario.save();
+    res.json({ ok: true });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro no servidor ao salvar os dados.' });
+  }
 });
 
 // ==============================
 // E-mail diário — roda todo dia às 08:00 (horário do servidor)
-// Manda um resumo pra cada usuário cadastrado
 // ==============================
 cron.schedule('0 8 * * *', async () => {
   console.log('Executando envio diário de e-mails...');
-  const db = lerDB();
 
-  for (const usuario of db.usuarios) {
-    const hoje = new Date();
-    const mesAtual = hoje.getMonth();
-    const anoAtual = hoje.getFullYear();
+  try {
+    const usuarios = await Usuario.find();
 
-    const doMes = usuario.lancamentos.filter(l => {
-      const d = new Date(l.data);
-      return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
-    });
+    for (const usuario of usuarios) {
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth();
+      const anoAtual = hoje.getFullYear();
 
-    const entradas = doMes.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
-    const saidas = doMes.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
-    const saldo = entradas - saidas;
+      const doMes = usuario.lancamentos.filter(l => {
+        const d = new Date(l.data);
+        return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+      });
 
-    const texto = `Olá, ${usuario.nome}!\n\nResumo do seu saldo esse mês:\nEntradas: R$ ${entradas.toFixed(2)}\nSaídas: R$ ${saidas.toFixed(2)}\nSaldo: R$ ${saldo.toFixed(2)}\n\nNão esqueça de registrar seus gastos de hoje no app!`;
+      const entradas = doMes.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+      const saidas = doMes.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+      const saldo = entradas - saidas;
 
-    await enviarEmail(usuario.email, 'Resumo diário do seu saldo 📊', texto);
+      const texto = `Olá, ${usuario.nome}!\n\nResumo do seu saldo esse mês:\nEntradas: R$ ${entradas.toFixed(2)}\nSaídas: R$ ${saidas.toFixed(2)}\nSaldo: R$ ${saldo.toFixed(2)}\n\nNão esqueça de registrar seus gastos de hoje no app!`;
+
+      await enviarEmail(usuario.email, 'Resumo diário do seu saldo 📊', texto);
+    }
+  } catch (erro) {
+    console.error('Erro ao rodar o envio diário:', erro.message);
   }
 });
 
