@@ -32,6 +32,12 @@ const lancamentoSchema = new mongoose.Schema({
   data: Date
 }, { _id: false });
 
+const metaSchema = new mongoose.Schema({
+  id: Number,
+  nome: String,
+  valor: Number
+}, { _id: false });
+
 const usuarioSchema = new mongoose.Schema({
   nome: String,
   email: { type: String, unique: true, lowercase: true },
@@ -46,8 +52,10 @@ const usuarioSchema = new mongoose.Schema({
   corEscolhida: { type: String, default: 'azul' },
   planoAtual: { type: String, default: 'free' },
   devAtivo: { type: Boolean, default: false },
+  limiteGasto: { type: Number, default: null },
   lancamentos: [lancamentoSchema],
   metaAlvo: { type: Number, default: null },
+  metas: [metaSchema],
   criadoEm: { type: Date, default: Date.now }
 });
 
@@ -307,24 +315,28 @@ app.get('/dados', autenticar, (req, res) => {
     email: req.usuario.email,
     lancamentos: req.usuario.lancamentos,
     metaAlvo: req.usuario.metaAlvo,
+    metas: req.usuario.metas,
     criadoEm: req.usuario.criadoEm,
     foto: req.usuario.foto,
     corEscolhida: req.usuario.corEscolhida,
     planoAtual: req.usuario.planoAtual,
-    devAtivo: req.usuario.devAtivo
+    devAtivo: req.usuario.devAtivo,
+    limiteGasto: req.usuario.limiteGasto
   });
 });
 
 // Salvar dados do usuário logado
 app.post('/dados', autenticar, async (req, res) => {
   try {
-    const { lancamentos, metaAlvo, foto, planoAtual, devAtivo, corEscolhida } = req.body;
+    const { lancamentos, metaAlvo, foto, planoAtual, devAtivo, corEscolhida, limiteGasto, metas } = req.body;
     req.usuario.lancamentos = lancamentos || [];
     req.usuario.metaAlvo = metaAlvo ?? null;
+    if (metas !== undefined) req.usuario.metas = metas;
     if (foto !== undefined) req.usuario.foto = foto;
     if (planoAtual !== undefined) req.usuario.planoAtual = planoAtual;
     if (devAtivo !== undefined) req.usuario.devAtivo = devAtivo;
     if (corEscolhida !== undefined) req.usuario.corEscolhida = corEscolhida;
+    if (limiteGasto !== undefined) req.usuario.limiteGasto = limiteGasto;
     await req.usuario.save();
     res.json({ ok: true });
   } catch (erro) {

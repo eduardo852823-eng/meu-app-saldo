@@ -6,6 +6,7 @@ let lancamentos = [];
 let tipoAtual = 'saida';
 let filtroAtual = 'todos';
 let metaAlvo = null;
+let metas = [];
 let editandoId = null;
 let saldoOculto = false;
 let planoAtual = 'free';
@@ -20,6 +21,7 @@ let corEscolhida = 'azul';
 // --- Chaves de armazenamento ---
 const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
 const CHAVE_META = 'saldo_meta';
+const CHAVE_METAS = 'saldo_metas';
 const CHAVE_NOME = 'saldo_nome';
 const CHAVE_TEMA = 'saldo_tema';
 const CHAVE_OCULTO = 'saldo_oculto';
@@ -58,10 +60,12 @@ const totalEntradasEl = document.getElementById('totalEntradas');
 const totalSaidasEl = document.getElementById('totalSaidas');
 const dataAtualEl = document.getElementById('dataAtual');
 const filtroBtns = document.querySelectorAll('.filtro-btn');
-const metaAtualEl = document.getElementById('metaAtual');
-const metaAlvoEl = document.getElementById('metaAlvo');
-const metaBarraEl = document.getElementById('metaBarra');
-const btnEditarMeta = document.getElementById('btnEditarMeta');
+const listaMetasEl = document.getElementById('listaMetas');
+const metasVazioEl = document.getElementById('metasVazio');
+const novaMetaNome = document.getElementById('novaMetaNome');
+const novaMetaValor = document.getElementById('novaMetaValor');
+const btnAddMeta = document.getElementById('btnAddMeta');
+const metasAvisoLimiteEl = document.getElementById('metasAvisoLimite');
 const graficoSaidaEl = document.getElementById('topGastos');
 const graficoSaidaVazioEl = document.getElementById('topGastosVazio');
 const graficoEntradaEl = document.getElementById('topEntradas');
@@ -207,6 +211,7 @@ function salvar() {
   try {
     localStorage.setItem(CHAVE_LANCAMENTOS, JSON.stringify(lancamentos));
     localStorage.setItem(CHAVE_META, metaAlvo === null ? '' : String(metaAlvo));
+    localStorage.setItem(CHAVE_METAS, JSON.stringify(metas));
     localStorage.setItem(CHAVE_NOME, nomeUsuario);
     localStorage.setItem(CHAVE_PLANO, planoAtual);
     localStorage.setItem(CHAVE_DEV, devAtivo ? '1' : '0');
@@ -230,6 +235,13 @@ function carregar() {
     }
     const meta = localStorage.getItem(CHAVE_META);
     if (meta) metaAlvo = parseFloat(meta);
+    const metasSalvas = localStorage.getItem(CHAVE_METAS);
+    if (metasSalvas) {
+      metas = JSON.parse(metasSalvas);
+    } else if (metaAlvo) {
+      // Migração de quem já tinha uma meta única salva antes
+      metas = [{ id: Date.now(), nome: 'Minha meta', valor: metaAlvo }];
+    }
     const nome = localStorage.getItem(CHAVE_NOME);
     if (nome) nomeUsuario = nome;
     const oculto = localStorage.getItem(CHAVE_OCULTO);
@@ -271,6 +283,10 @@ function aplicarGating() {
     corEscolhida = 'azul';
   }
   aplicarCor(corEscolhida);
+
+  if (!temRecurso('ultimate') && metas.length > 1) {
+    metas = metas.slice(0, 1);
+  }
 
   planoAtualNomeEl.textContent = devAtivo
     ? 'Ultimate (modo dev)'
@@ -668,6 +684,8 @@ async function finalizarLogin(dados) {
       if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
       if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
       if (dadosServidor.corEscolhida) corEscolhida = dadosServidor.corEscolhida;
+      if (dadosServidor.limiteGasto) limiteGasto = dadosServidor.limiteGasto;
+      if (dadosServidor.metas) metas = dadosServidor.metas;
     }
   } catch (erroDados) {
     console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
@@ -842,7 +860,7 @@ async function sincronizarComServidor() {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + tokenSessao
       },
-      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo, corEscolhida })
+      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo, corEscolhida, limiteGasto, metas })
     });
   } catch (erro) {
     console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho).', erro);
@@ -902,6 +920,7 @@ btnExportar.addEventListener('click', () => {
   const backup = {
     lancamentos,
     metaAlvo,
+    metas,
     nomeUsuario,
     exportadoEm: new Date().toISOString()
   };
@@ -931,6 +950,7 @@ inputImportar.addEventListener('change', (e) => {
 
       lancamentos = dados.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
       metaAlvo = dados.metaAlvo || null;
+      if (Array.isArray(dados.metas)) metas = dados.metas;
       if (dados.nomeUsuario) nomeUsuario = dados.nomeUsuario;
 
       salvar();
@@ -1170,32 +1190,61 @@ function atualizarResumo(pulsar) {
 }
 
 // --- Meta de economia ---
-btnEditarMeta.addEventListener('click', () => {
-  const valor = prompt('Qual sua meta de economia (R$)?', metaAlvo || '');
-  if (valor === null) return;
-  const num = parseFloat(valor.replace(',', '.'));
-  if (!isNaN(num) && num > 0) {
-    metaAlvo = num;
-    salvar();
-    atualizarMeta();
+btnAddMeta.addEventListener('click', () => {
+  const nome = novaMetaNome.value.trim();
+  const valor = parseFloat(novaMetaValor.value);
+
+  if (!nome || isNaN(valor) || valor <= 0) {
+    alert('Preenche o nome e um valor válido pra meta.');
+    return;
   }
+
+  if (!temRecurso('ultimate') && metas.length >= 1) {
+    metasAvisoLimiteEl.style.display = 'block';
+    return;
+  }
+
+  metas.push({ id: Date.now(), nome, valor });
+  novaMetaNome.value = '';
+  novaMetaValor.value = '';
+  metasAvisoLimiteEl.style.display = 'none';
+  salvar();
+  atualizarMeta();
 });
+
+function removerMeta(id) {
+  metas = metas.filter(m => m.id !== id);
+  salvar();
+  atualizarMeta();
+}
 
 function atualizarMeta() {
   const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
   const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
   const saldo = Math.max(entradas - saidas, 0);
 
-  metaAtualEl.textContent = formatarMoeda(saldo);
+  listaMetasEl.innerHTML = '';
+  metasVazioEl.classList.toggle('mostrar', metas.length === 0);
 
-  if (metaAlvo) {
-    metaAlvoEl.textContent = formatarMoeda(metaAlvo);
-    const pct = Math.min((saldo / metaAlvo) * 100, 100);
-    metaBarraEl.style.width = pct + '%';
-  } else {
-    metaAlvoEl.textContent = '—';
-    metaBarraEl.style.width = '0%';
-  }
+  metas.forEach(meta => {
+    const pct = Math.min((saldo / meta.valor) * 100, 100);
+    const card = document.createElement('div');
+    card.className = 'meta-card';
+    card.innerHTML = `
+      <div class="meta-card-topo">
+        <span class="meta-card-nome">${escapeHTML(meta.nome)}</span>
+        <button class="meta-card-del" title="Remover meta">✕</button>
+      </div>
+      <div class="meta-card-valores">${formatarMoeda(saldo)} de <b>${formatarMoeda(meta.valor)}</b></div>
+      <div class="meta-barra-fundo">
+        <div class="meta-barra" style="width:${pct}%"></div>
+      </div>
+    `;
+    card.querySelector('.meta-card-del').addEventListener('click', () => removerMeta(meta.id));
+    listaMetasEl.appendChild(card);
+  });
+
+  btnAddMeta.style.display = (!temRecurso('ultimate') && metas.length >= 1) ? 'none' : 'inline-block';
 }
 
 // --- Maiores lançamentos do mês atual ---
@@ -1350,6 +1399,8 @@ async function buscarDadosServidorAoAbrir() {
       if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
       if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
       if (dadosServidor.corEscolhida) corEscolhida = dadosServidor.corEscolhida;
+      if (dadosServidor.limiteGasto) limiteGasto = dadosServidor.limiteGasto;
+      if (dadosServidor.metas) metas = dadosServidor.metas;
       salvar();
       aplicarGating();
       atualizarBotaoPerfilTopo();

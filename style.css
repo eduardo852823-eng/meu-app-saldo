@@ -1496,6 +1496,56 @@ html[data-cor="vermelho"] { --blue: #ef4444; --blue-bright: #f87171; --blue-deep
 /* Config tab button */
 .tab-config { flex: 0 0 44px; font-size: 16px; }
 
+.lista-metas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta-card {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 13px 15px;
+}
+
+.meta-card-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.meta-card-nome {
+  font-weight: 700;
+  font-size: 13.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta-card-del {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.meta-card-del:hover { color: var(--red); }
+
+.meta-card-valores {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.meta-card-valores b { color: var(--cyan); }
+
 /* Meta de economia */
 .meta-painel {
   margin-bottom: 16px;

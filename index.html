@@ -236,16 +236,19 @@
   <section class="tab-conteudo" id="tab-analise">
 
     <section class="painel meta-painel">
-      <div class="meta-topo">
-        <div>
-          <div class="meta-label">Meta de economia</div>
-          <div class="meta-valores"><span id="metaAtual">R$ 0,00</span> de <span id="metaAlvo">—</span></div>
-        </div>
-        <button id="btnEditarMeta" class="btn-ghost-sm">Definir</button>
+      <div class="lista-header" style="margin-bottom:12px;">
+        <span>Metas de economia</span>
       </div>
-      <div class="meta-barra-fundo">
-        <div class="meta-barra" id="metaBarra"></div>
+      <div id="listaMetas" class="lista-metas"></div>
+      <div id="metasVazio" class="vazio vazio-mini">
+        <span>Nenhuma meta ainda. Cria a primeira abaixo.</span>
       </div>
+      <div class="form-row" id="formNovaMeta" style="margin-top:12px;">
+        <input type="text" id="novaMetaNome" placeholder="Nome da meta (ex: Tênis novo)" maxlength="30">
+        <input type="number" id="novaMetaValor" placeholder="Valor R$" step="0.01" min="1">
+      </div>
+      <button id="btnAddMeta" class="btn-ghost-sm" style="margin-top:8px;">+ Adicionar meta</button>
+      <p class="campo-aviso" id="metasAvisoLimite" style="display:none;">No plano Free/Pro só dá pra ter 1 meta por vez. O Ultimate libera metas ilimitadas.</p>
     </section>
 
     <section class="painel">
