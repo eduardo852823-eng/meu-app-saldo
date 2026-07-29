@@ -15,6 +15,7 @@ let fotoUsuario = '';
 let limiteGasto = null;
 let tokenSessao = '';
 let criadoEm = '';
+let corEscolhida = 'azul';
 
 // --- Chaves de armazenamento ---
 const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
@@ -28,6 +29,7 @@ const CHAVE_EMAIL = 'saldo_email';
 const CHAVE_FOTO = 'saldo_foto';
 const CHAVE_LIMITE = 'saldo_limite';
 const CHAVE_CRIADOEM = 'saldo_criadoem';
+const CHAVE_COR = 'saldo_cor';
 const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
 const CHAVE_TOKEN = 'saldo_token';
@@ -136,6 +138,40 @@ const tutorialSlides = document.querySelectorAll('.tutorial-slide');
 const tutorialPontosEl = document.getElementById('tutorialPontos');
 const btnTutorialAnterior = document.getElementById('btnTutorialAnterior');
 const btnTutorialProximo = document.getElementById('btnTutorialProximo');
+const coresGradeEl = document.getElementById('coresGrade');
+const coresExplicaEl = document.getElementById('coresExplica');
+
+// --- Personalização de cores (Ultimate) ---
+function aplicarCor(cor) {
+  document.documentElement.setAttribute('data-cor', cor);
+}
+
+function renderizarGradeCores() {
+  const liberado = temRecurso('ultimate');
+  coresExplicaEl.textContent = liberado
+    ? 'Escolha a cor de destaque do app.'
+    : 'Escolha a cor de destaque do app. Recurso exclusivo do plano Ultimate — ative o modo desenvolvedor ou assine pra usar.';
+
+  coresGradeEl.querySelectorAll('.cor-opcao').forEach(btn => {
+    const cor = btn.dataset.cor;
+    btn.classList.toggle('ativa', cor === corEscolhida);
+    btn.classList.toggle('bloqueada', !liberado && cor !== 'azul');
+  });
+}
+
+coresGradeEl.querySelectorAll('.cor-opcao').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const cor = btn.dataset.cor;
+    if (cor !== 'azul' && !temRecurso('ultimate')) {
+      alert('Essa cor é exclusiva do plano Ultimate.');
+      return;
+    }
+    corEscolhida = cor;
+    aplicarCor(cor);
+    salvar();
+    renderizarGradeCores();
+  });
+});
 const comparacaoEl = document.getElementById('comparacao');
 const modalBoasVindas = document.getElementById('modalBoasVindas');
 const formAuth = document.getElementById('formAuth');
@@ -179,6 +215,7 @@ function salvar() {
     localStorage.setItem(CHAVE_LIMITE, limiteGasto === null ? '' : String(limiteGasto));
     localStorage.setItem(CHAVE_TOKEN, tokenSessao);
     localStorage.setItem(CHAVE_CRIADOEM, criadoEm);
+    localStorage.setItem(CHAVE_COR, corEscolhida);
   } catch (e) {
     console.warn('Não foi possível salvar os dados localmente.', e);
   }
@@ -206,6 +243,7 @@ function carregar() {
     if (limite) limiteGasto = parseFloat(limite);
     tokenSessao = localStorage.getItem(CHAVE_TOKEN) || '';
     criadoEm = localStorage.getItem(CHAVE_CRIADOEM) || '';
+    corEscolhida = localStorage.getItem(CHAVE_COR) || 'azul';
   } catch (e) {
     console.warn('Não foi possível carregar os dados salvos.', e);
     lancamentos = [];
@@ -228,6 +266,11 @@ function aplicarGating() {
   linhaRecorrente.style.display = pro ? 'flex' : 'none';
   painelBusca.style.display = pro ? 'block' : 'none';
   painelLimite.style.display = pro ? 'block' : 'none';
+
+  if (!temRecurso('ultimate') && corEscolhida !== 'azul') {
+    corEscolhida = 'azul';
+  }
+  aplicarCor(corEscolhida);
 
   planoAtualNomeEl.textContent = devAtivo
     ? 'Ultimate (modo dev)'
@@ -354,6 +397,7 @@ configSideItens.forEach(item => {
     const alvo = document.getElementById(`fs${secao.charAt(0).toUpperCase()}${secao.slice(1)}`);
     if (alvo) alvo.classList.add('ativa');
     if (secao === 'plano') renderizarComparativo();
+    if (secao === 'cores') renderizarGradeCores();
     if (secao === 'perfil') carregarCamposPerfil();
   });
 });
@@ -623,6 +667,7 @@ async function finalizarLogin(dados) {
       if (dadosServidor.foto) fotoUsuario = dadosServidor.foto;
       if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
       if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
+      if (dadosServidor.corEscolhida) corEscolhida = dadosServidor.corEscolhida;
     }
   } catch (erroDados) {
     console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
@@ -797,7 +842,7 @@ async function sincronizarComServidor() {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + tokenSessao
       },
-      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo })
+      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo, corEscolhida })
     });
   } catch (erro) {
     console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho).', erro);
@@ -1304,6 +1349,7 @@ async function buscarDadosServidorAoAbrir() {
       if (dadosServidor.foto) fotoUsuario = dadosServidor.foto;
       if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
       if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
+      if (dadosServidor.corEscolhida) corEscolhida = dadosServidor.corEscolhida;
       salvar();
       aplicarGating();
       atualizarBotaoPerfilTopo();
@@ -1321,6 +1367,7 @@ async function buscarDadosServidorAoAbrir() {
 // --- Inicialização ---
 atualizarDataTopo();
 carregar();
+aplicarCor(corEscolhida);
 verificarNome();
 aplicarSaldoOculto();
 aplicarGating();

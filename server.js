@@ -43,6 +43,7 @@ const usuarioSchema = new mongoose.Schema({
   codigoVerificacao: String,
   codigoExpira: Date,
   foto: String,
+  corEscolhida: { type: String, default: 'azul' },
   planoAtual: { type: String, default: 'free' },
   devAtivo: { type: Boolean, default: false },
   lancamentos: [lancamentoSchema],
@@ -308,6 +309,7 @@ app.get('/dados', autenticar, (req, res) => {
     metaAlvo: req.usuario.metaAlvo,
     criadoEm: req.usuario.criadoEm,
     foto: req.usuario.foto,
+    corEscolhida: req.usuario.corEscolhida,
     planoAtual: req.usuario.planoAtual,
     devAtivo: req.usuario.devAtivo
   });
@@ -316,12 +318,13 @@ app.get('/dados', autenticar, (req, res) => {
 // Salvar dados do usuário logado
 app.post('/dados', autenticar, async (req, res) => {
   try {
-    const { lancamentos, metaAlvo, foto, planoAtual, devAtivo } = req.body;
+    const { lancamentos, metaAlvo, foto, planoAtual, devAtivo, corEscolhida } = req.body;
     req.usuario.lancamentos = lancamentos || [];
     req.usuario.metaAlvo = metaAlvo ?? null;
     if (foto !== undefined) req.usuario.foto = foto;
     if (planoAtual !== undefined) req.usuario.planoAtual = planoAtual;
     if (devAtivo !== undefined) req.usuario.devAtivo = devAtivo;
+    if (corEscolhida !== undefined) req.usuario.corEscolhida = corEscolhida;
     await req.usuario.save();
     res.json({ ok: true });
   } catch (erro) {

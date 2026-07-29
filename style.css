@@ -47,6 +47,7 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   position: relative;
 }
@@ -102,7 +103,7 @@ body::after {
   z-index: 1;
   max-width: 480px;
   margin: 0 auto;
-  padding: 28px 20px 60px;
+  padding: 14px 20px 60px;
 }
 
 /* Topbar */
@@ -1198,7 +1199,48 @@ input:focus {
   .painel-perfil-topo { right: 12px; left: 12px; width: auto; }
 }
 
-/* Menu de configurações */
+html[data-cor="roxo"] { --blue: #8b5cf6; --blue-bright: #a78bfa; --blue-deep: #6d28d9; --cyan: #c084fc; }
+html[data-cor="verde"] { --blue: #10b981; --blue-bright: #34d399; --blue-deep: #047857; --cyan: #6ee7b7; }
+html[data-cor="laranja"] { --blue: #f97316; --blue-bright: #fb923c; --blue-deep: #c2410c; --cyan: #fdba74; }
+html[data-cor="rosa"] { --blue: #ec4899; --blue-bright: #f472b6; --blue-deep: #be185d; --cyan: #f9a8d4; }
+html[data-cor="vermelho"] { --blue: #ef4444; --blue-bright: #f87171; --blue-deep: #b91c1c; --cyan: #fca5a5; }
+
+.cores-grade {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 420px;
+}
+
+.cor-opcao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 14px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 600;
+  transition: border-color 0.2s, transform 0.15s;
+}
+
+.cor-opcao span {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--amostra);
+  box-shadow: 0 0 12px var(--amostra);
+}
+
+.cor-opcao:hover { transform: translateY(-2px); }
+.cor-opcao.ativa { border-color: var(--amostra); color: var(--text); }
+
+.cor-opcao.bloqueada { opacity: 0.4; cursor: not-allowed; }
+.cor-opcao.bloqueada:hover { transform: none; }
 .config-linha {
   display: flex;
   align-items: center;
@@ -1734,6 +1776,6 @@ input:focus {
     padding-left: max(20px, env(safe-area-inset-left));
     padding-right: max(20px, env(safe-area-inset-right));
     padding-bottom: max(40px, env(safe-area-inset-bottom));
-    padding-top: max(28px, env(safe-area-inset-top));
+    padding-top: max(10px, env(safe-area-inset-top));
   }
 }
