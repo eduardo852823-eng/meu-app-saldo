@@ -33,7 +33,7 @@ const CHAVE_COR = 'saldo_cor';
 const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
 const CHAVE_TOKEN = 'saldo_token';
-const GOOGLE_CLIENT_ID = 'COLOQUE_SEU_CLIENT_ID_AQUI.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '1067162991665-o0md9cklrq9c1tco1qrk1jr9l62d0res.apps.googleusercontent.com';
 
 const CATEGORIAS = {
   comida:     { nome: 'Comida',      icone: '🍔' },
