@@ -71,11 +71,25 @@ body::before {
   transform: translateX(-50%);
   width: 900px;
   height: 500px;
-  background: radial-gradient(ellipse, rgba(59,130,246,0.25), transparent 70%);
+  background: radial-gradient(ellipse, rgba(59,130,246,0.3), transparent 70%);
   filter: blur(40px);
   z-index: 0;
   pointer-events: none;
   animation: pulseGlow 8s ease-in-out infinite;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  bottom: -25%;
+  right: -10%;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(ellipse, rgba(236,72,153,0.18), transparent 70%);
+  filter: blur(60px);
+  z-index: 0;
+  pointer-events: none;
+  animation: pulseGlow 10s ease-in-out infinite reverse;
 }
 
 @keyframes pulseGlow {
@@ -1064,14 +1078,37 @@ input:focus {
 .config-fs-secao h2 {
   font-family: var(--font-display);
   font-size: 20px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .config-fs-explica {
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--text-dim);
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.config-fs-secao .painel,
+.config-fs-secao .plano-card,
+.config-fs-secao .dev-status {
+  max-width: 480px;
+}
+
+.config-fs-secao input,
+.config-fs-secao .campo-aviso,
+.config-fs-secao .btn-add {
+  max-width: 420px;
+}
+
+.campo-aviso {
+  line-height: 1.6;
+  max-width: 420px;
+}
+
+.plano-card li {
   line-height: 1.5;
+  word-break: break-word;
 }
 
 /* Senha com olho */
@@ -1095,6 +1132,37 @@ input:focus {
   color: var(--text-dim);
   cursor: pointer;
   font-size: 15px;
+}
+
+/* Tutorial em slides */
+.tutorial-card { min-height: 340px; display: flex; flex-direction: column; justify-content: space-between; }
+
+.tutorial-slide { display: none; animation: fadeUp 0.3s ease both; }
+.tutorial-slide.ativo { display: block; }
+
+.tutorial-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.tutorial-pontos {
+  display: flex;
+  gap: 6px;
+}
+
+.tutorial-ponto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.tutorial-ponto.ativo {
+  background: var(--blue-bright);
+  transform: scale(1.3);
 }
 
 /* Modal de compra / tutorial */

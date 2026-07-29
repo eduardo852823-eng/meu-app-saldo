@@ -132,6 +132,10 @@ const diaRecorrenteSelect = document.getElementById('diaRecorrente');
 // Modal de compra
 const modalCompra = document.getElementById('modalCompra');
 const btnFecharModalCompra = document.getElementById('btnFecharModalCompra');
+const tutorialSlides = document.querySelectorAll('.tutorial-slide');
+const tutorialPontosEl = document.getElementById('tutorialPontos');
+const btnTutorialAnterior = document.getElementById('btnTutorialAnterior');
+const btnTutorialProximo = document.getElementById('btnTutorialProximo');
 const comparacaoEl = document.getElementById('comparacao');
 const modalBoasVindas = document.getElementById('modalBoasVindas');
 const formAuth = document.getElementById('formAuth');
@@ -246,6 +250,7 @@ btnDevAtivar.addEventListener('click', () => {
     salvar();
     aplicarGating();
     preencherCategorias();
+    irParaSlide(0);
     modalCompra.classList.remove('escondido');
   } else {
     alert('Senha incorreta.');
@@ -255,6 +260,31 @@ btnDevAtivar.addEventListener('click', () => {
 btnFecharModalCompra.addEventListener('click', () => {
   modalCompra.classList.add('escondido');
 });
+
+// --- Tutorial em slides ---
+let slideAtual = 0;
+
+function montarPontosTutorial() {
+  tutorialPontosEl.innerHTML = '';
+  tutorialSlides.forEach((_, i) => {
+    const ponto = document.createElement('span');
+    ponto.className = 'tutorial-ponto' + (i === slideAtual ? ' ativo' : '');
+    tutorialPontosEl.appendChild(ponto);
+  });
+}
+
+function irParaSlide(indice) {
+  slideAtual = indice;
+  tutorialSlides.forEach((slide, i) => slide.classList.toggle('ativo', i === indice));
+  montarPontosTutorial();
+  btnTutorialAnterior.style.visibility = indice === 0 ? 'hidden' : 'visible';
+  const ultimo = indice === tutorialSlides.length - 1;
+  btnTutorialProximo.style.display = ultimo ? 'none' : 'inline-block';
+  btnFecharModalCompra.style.display = ultimo ? 'block' : 'none';
+}
+
+btnTutorialAnterior.addEventListener('click', () => irParaSlide(Math.max(0, slideAtual - 1)));
+btnTutorialProximo.addEventListener('click', () => irParaSlide(Math.min(tutorialSlides.length - 1, slideAtual + 1)));
 
 btnDevDesativar.addEventListener('click', () => {
   devAtivo = false;
@@ -384,7 +414,13 @@ document.addEventListener('click', (e) => {
 
 btnPerfilSair.addEventListener('click', confirmarSair);
 
-btnFotoTopo.addEventListener('click', () => inputFotoTopo.click());
+btnFotoTopo.addEventListener('click', () => {
+  if (!temRecurso('ultimate')) {
+    alert('Foto de perfil é um recurso Ultimate. Ative o modo desenvolvedor ou assine o plano pra usar.');
+    return;
+  }
+  inputFotoTopo.click();
+});
 inputFotoTopo.addEventListener('change', (e) => {
   const arquivo = e.target.files[0];
   if (!arquivo) return;
@@ -423,7 +459,13 @@ function carregarCamposPerfil() {
   }
 }
 
-btnFoto.addEventListener('click', () => inputFoto.click());
+btnFoto.addEventListener('click', () => {
+  if (!temRecurso('ultimate')) {
+    alert('Foto de perfil é um recurso Ultimate. Ative o modo desenvolvedor ou assine o plano pra usar.');
+    return;
+  }
+  inputFoto.click();
+});
 
 inputFoto.addEventListener('change', (e) => {
   const arquivo = e.target.files[0];
@@ -578,12 +620,16 @@ async function finalizarLogin(dados) {
       }
       metaAlvo = dadosServidor.metaAlvo ?? null;
       if (dadosServidor.criadoEm) criadoEm = dadosServidor.criadoEm;
+      if (dadosServidor.foto) fotoUsuario = dadosServidor.foto;
+      if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
+      if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
     }
   } catch (erroDados) {
     console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
   }
 
   salvar();
+  aplicarGating();
   saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
   atualizarBotaoPerfilTopo();
   modalBoasVindas.classList.add('escondido');
@@ -751,7 +797,7 @@ async function sincronizarComServidor() {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + tokenSessao
       },
-      body: JSON.stringify({ lancamentos, metaAlvo })
+      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo })
     });
   } catch (erro) {
     console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho).', erro);
@@ -1254,7 +1300,13 @@ async function buscarDadosServidorAoAbrir() {
         lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
       }
       metaAlvo = dadosServidor.metaAlvo ?? null;
-      if (dadosServidor.criadoEm) { criadoEm = dadosServidor.criadoEm; salvar(); }
+      if (dadosServidor.criadoEm) { criadoEm = dadosServidor.criadoEm; }
+      if (dadosServidor.foto) fotoUsuario = dadosServidor.foto;
+      if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
+      if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
+      salvar();
+      aplicarGating();
+      atualizarBotaoPerfilTopo();
       renderizarTudo();
     } else if (resp.status === 401) {
       // Token expirado/inválido — desloga silenciosamente

@@ -358,18 +358,40 @@
 
   <!-- Modal de boas-vindas de compra (modo dev) -->
   <div class="modal-overlay escondido" id="modalCompra">
-    <div class="modal-card">
-      <div class="modal-icone" style="background:linear-gradient(135deg,#22d3ee,#3b82f6);">🎉</div>
-      <h1>Parabéns pelo Ultimate!</h1>
-      <p class="modal-explica">Agora você tem acesso a tudo. Aqui vai um resumo rápido do que mudou:</p>
-      <ul class="tutorial-lista">
-        <li>🏷️ <b>Categorias</b> — organiza cada gasto por tipo, no formulário de Lançar</li>
-        <li>🔁 <b>Gastos fixos</b> — marca "repetir todo mês" e escolhe o dia</li>
-        <li>🔍 <b>Busca</b> — acha qualquer lançamento pelo nome, na aba Análise</li>
-        <li>⚠️ <b>Limite de gasto</b> — define um teto mensal e recebe aviso</li>
-        <li>🎯 <b>Metas</b> e <b>foto de perfil</b> liberadas</li>
-      </ul>
-      <button id="btnFecharModalCompra" class="btn-add" style="margin-top:14px;">Entendi, vamos lá!</button>
+    <div class="modal-card tutorial-card">
+      <div class="tutorial-slide ativo" data-slide="0">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#22d3ee,#3b82f6);">🎉</div>
+        <h1>Parabéns pelo Ultimate!</h1>
+        <p class="modal-explica">Agora você tem acesso a tudo. Vamos mostrar rapidinho o que mudou.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="1">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#fbbf24,#f97316);">🏷️</div>
+        <h1>Categorias</h1>
+        <p class="modal-explica">Organiza cada gasto por tipo (comida, transporte, etc) direto no formulário de Lançar.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="2">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);">🔁</div>
+        <h1>Gastos fixos</h1>
+        <p class="modal-explica">Marca "repetir todo mês" e escolhe o dia exato — não esquece mais das contas recorrentes.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="3">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#34d399,#059669);">🔍</div>
+        <h1>Busca e limite</h1>
+        <p class="modal-explica">Acha qualquer lançamento pelo nome e define um teto de gasto mensal, na aba Análise.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="4">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#f472b6,#db2777);">🎯</div>
+        <h1>Metas e foto</h1>
+        <p class="modal-explica">Foto de perfil liberada e metas de economia mais completas te esperando.</p>
+      </div>
+
+      <div class="tutorial-nav">
+        <button id="btnTutorialAnterior" class="btn-ghost-sm" style="visibility:hidden;">‹ Voltar</button>
+        <div class="tutorial-pontos" id="tutorialPontos"></div>
+        <button id="btnTutorialProximo" class="btn-ghost-sm">Próximo ›</button>
+      </div>
+
+      <button id="btnFecharModalCompra" class="btn-add" style="margin-top:14px;display:none;">Entendi, vamos lá!</button>
     </div>
   </div>  <footer class="rodape">
     <button id="btnExportar" class="link-discreto">Exportar backup</button>

@@ -42,6 +42,9 @@ const usuarioSchema = new mongoose.Schema({
   verificado: { type: Boolean, default: false },
   codigoVerificacao: String,
   codigoExpira: Date,
+  foto: String,
+  planoAtual: { type: String, default: 'free' },
+  devAtivo: { type: Boolean, default: false },
   lancamentos: [lancamentoSchema],
   metaAlvo: { type: Number, default: null },
   criadoEm: { type: Date, default: Date.now }
@@ -303,16 +306,22 @@ app.get('/dados', autenticar, (req, res) => {
     email: req.usuario.email,
     lancamentos: req.usuario.lancamentos,
     metaAlvo: req.usuario.metaAlvo,
-    criadoEm: req.usuario.criadoEm
+    criadoEm: req.usuario.criadoEm,
+    foto: req.usuario.foto,
+    planoAtual: req.usuario.planoAtual,
+    devAtivo: req.usuario.devAtivo
   });
 });
 
 // Salvar dados do usuário logado
 app.post('/dados', autenticar, async (req, res) => {
   try {
-    const { lancamentos, metaAlvo } = req.body;
+    const { lancamentos, metaAlvo, foto, planoAtual, devAtivo } = req.body;
     req.usuario.lancamentos = lancamentos || [];
     req.usuario.metaAlvo = metaAlvo ?? null;
+    if (foto !== undefined) req.usuario.foto = foto;
+    if (planoAtual !== undefined) req.usuario.planoAtual = planoAtual;
+    if (devAtivo !== undefined) req.usuario.devAtivo = devAtivo;
     await req.usuario.save();
     res.json({ ok: true });
   } catch (erro) {
