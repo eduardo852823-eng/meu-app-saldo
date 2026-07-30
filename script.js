@@ -666,8 +666,17 @@ async function finalizarLogin(dados) {
   tokenSessao = dados.token;
   nomeUsuario = dados.nome;
   emailUsuario = dados.email;
+
+  // Reseta tudo pro padrão ANTES de buscar — evita misturar dados
+  // da conta/sessão anterior com a conta que está entrando agora
   lancamentos = [];
   metaAlvo = null;
+  fotoUsuario = '';
+  planoAtual = 'free';
+  devAtivo = false;
+  corEscolhida = 'azul';
+  limiteGasto = null;
+  metas = [];
 
   try {
     const respDados = await fetch(API_URL + '/dados', {
@@ -675,17 +684,15 @@ async function finalizarLogin(dados) {
     });
     if (respDados.ok) {
       const dadosServidor = await respDados.json();
-      if (dadosServidor.lancamentos) {
-        lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
-      }
+      lancamentos = (dadosServidor.lancamentos || []).map(l => ({ ...l, data: new Date(l.data) }));
       metaAlvo = dadosServidor.metaAlvo ?? null;
-      if (dadosServidor.criadoEm) criadoEm = dadosServidor.criadoEm;
-      if (dadosServidor.foto) fotoUsuario = dadosServidor.foto;
-      if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
-      if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
-      if (dadosServidor.corEscolhida) corEscolhida = dadosServidor.corEscolhida;
-      if (dadosServidor.limiteGasto) limiteGasto = dadosServidor.limiteGasto;
-      if (dadosServidor.metas) metas = dadosServidor.metas;
+      criadoEm = dadosServidor.criadoEm || criadoEm;
+      fotoUsuario = dadosServidor.foto || '';
+      planoAtual = dadosServidor.planoAtual || 'free';
+      devAtivo = dadosServidor.devAtivo || false;
+      corEscolhida = dadosServidor.corEscolhida || 'azul';
+      limiteGasto = dadosServidor.limiteGasto ?? null;
+      metas = dadosServidor.metas || [];
     }
   } catch (erroDados) {
     console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
@@ -1390,17 +1397,15 @@ async function buscarDadosServidorAoAbrir() {
     });
     if (resp.ok) {
       const dadosServidor = await resp.json();
-      if (dadosServidor.lancamentos) {
-        lancamentos = dadosServidor.lancamentos.map(l => ({ ...l, data: new Date(l.data) }));
-      }
+      lancamentos = (dadosServidor.lancamentos || []).map(l => ({ ...l, data: new Date(l.data) }));
       metaAlvo = dadosServidor.metaAlvo ?? null;
-      if (dadosServidor.criadoEm) { criadoEm = dadosServidor.criadoEm; }
-      if (dadosServidor.foto) fotoUsuario = dadosServidor.foto;
-      if (dadosServidor.planoAtual) planoAtual = dadosServidor.planoAtual;
-      if (dadosServidor.devAtivo) devAtivo = dadosServidor.devAtivo;
-      if (dadosServidor.corEscolhida) corEscolhida = dadosServidor.corEscolhida;
-      if (dadosServidor.limiteGasto) limiteGasto = dadosServidor.limiteGasto;
-      if (dadosServidor.metas) metas = dadosServidor.metas;
+      criadoEm = dadosServidor.criadoEm || criadoEm;
+      fotoUsuario = dadosServidor.foto || '';
+      planoAtual = dadosServidor.planoAtual || 'free';
+      devAtivo = dadosServidor.devAtivo || false;
+      corEscolhida = dadosServidor.corEscolhida || 'azul';
+      limiteGasto = dadosServidor.limiteGasto ?? null;
+      metas = dadosServidor.metas || [];
       salvar();
       aplicarGating();
       atualizarBotaoPerfilTopo();
@@ -1414,6 +1419,12 @@ async function buscarDadosServidorAoAbrir() {
     console.warn('Não consegui buscar dados do servidor agora — usando os dados salvos neste aparelho.', erro);
   }
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && tokenSessao) {
+    buscarDadosServidorAoAbrir();
+  }
+});
 
 // --- Inicialização ---
 atualizarDataTopo();
