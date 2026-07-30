@@ -94,7 +94,7 @@ async function enviarEmail(destinatario, assunto, texto) {
   }
   try {
     await transporter.sendMail({
-      from: `"saldo." <${process.env.EMAIL_USUARIO}>`,
+      from: `"Economix" <${process.env.EMAIL_USUARIO}>`,
       to: destinatario,
       subject: assunto,
       text: texto
@@ -124,7 +124,7 @@ async function autenticar(req, res, next) {
 // ==============================
 
 app.get('/', (req, res) => {
-  res.send('API do saldo. rodando com sucesso!');
+  res.send('API do Economix rodando com sucesso!');
 });
 
 // Cadastro
@@ -161,7 +161,7 @@ app.post('/cadastro', async (req, res) => {
 
     await enviarEmail(
       email,
-      'Confirme seu e-mail — saldo.',
+      'Confirme seu e-mail — Economix',
       `Olá, ${nome}!\n\nSeu código de confirmação é: ${codigo}\n\nEle vale por 15 minutos.`
     );
 
@@ -221,7 +221,7 @@ app.post('/reenviar-codigo', async (req, res) => {
 
     await enviarEmail(
       usuario.email,
-      'Novo código de confirmação — saldo.',
+      'Novo código de confirmação — Economix',
       `Seu novo código é: ${codigo}\n\nEle vale por 15 minutos.`
     );
 

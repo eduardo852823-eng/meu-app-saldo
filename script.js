@@ -1286,6 +1286,11 @@ function removerMeta(id) {
 }
 
 function atualizarMeta() {
+  if (!temRecurso('ultimate') && metas.length > 1) {
+    metas = metas.slice(0, 1);
+    salvar();
+  }
+
   const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
   const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
   const saldo = Math.max(entradas - saidas, 0);

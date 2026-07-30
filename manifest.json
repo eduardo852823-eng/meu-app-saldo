@@ -1,6 +1,6 @@
 {
-  "name": "saldo. — Controle de Gastos",
-  "short_name": "saldo.",
+  "name": "Economix — Controle de Gastos",
+  "short_name": "Economix",
   "description": "Controle seus gastos e ganhos de forma simples.",
   "start_url": "./index.html",
   "scope": "./",
