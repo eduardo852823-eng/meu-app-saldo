@@ -846,7 +846,8 @@ async function processarLoginGoogle(resposta) {
   }
 }
 
-if (window.google && GOOGLE_CLIENT_ID.indexOf('COLOQUE_SEU') === -1) {
+function iniciarBotaoGoogle() {
+  if (!window.google || GOOGLE_CLIENT_ID.indexOf('COLOQUE_SEU') !== -1) return;
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
     callback: processarLoginGoogle
@@ -856,6 +857,11 @@ if (window.google && GOOGLE_CLIENT_ID.indexOf('COLOQUE_SEU') === -1) {
     { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill' }
   );
 }
+window.iniciarBotaoGoogle = iniciarBotaoGoogle;
+
+// Se o script do Google já tiver carregado antes desse ponto, inicia direto.
+// Senão, o próprio <script onload="..."> no HTML chama iniciarBotaoGoogle() quando terminar.
+if (window.googleCarregou) iniciarBotaoGoogle();
 
 // --- Sincronizar com o servidor (se logado) ---
 async function sincronizarComServidor() {

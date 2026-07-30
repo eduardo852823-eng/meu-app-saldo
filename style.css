@@ -1502,11 +1502,20 @@ html[data-cor="vermelho"] { --blue: #ef4444; --blue-bright: #f87171; --blue-deep
   gap: 10px;
 }
 
+#formNovaMeta {
+  flex-direction: column;
+}
+
+#formNovaMeta input {
+  width: 100%;
+}
+
 .meta-card {
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: 13px;
   padding: 13px 15px;
+  overflow: hidden;
 }
 
 .meta-card-topo {
@@ -1534,17 +1543,24 @@ html[data-cor="vermelho"] { --blue: #ef4444; --blue-bright: #f87171; --blue-deep
   cursor: pointer;
   font-size: 13px;
   flex-shrink: 0;
+  padding: 4px;
 }
 
 .meta-card-del:hover { color: var(--red); }
 
 .meta-card-valores {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-dim);
   margin-bottom: 8px;
+  overflow-wrap: break-word;
 }
 
 .meta-card-valores b { color: var(--cyan); }
+
+.meta-painel .btn-ghost-sm {
+  width: 100%;
+  text-align: center;
+}
 
 /* Meta de economia */
 .meta-painel {
