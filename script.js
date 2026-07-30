@@ -32,6 +32,7 @@ const CHAVE_FOTO = 'saldo_foto';
 const CHAVE_LIMITE = 'saldo_limite';
 const CHAVE_CRIADOEM = 'saldo_criadoem';
 const CHAVE_COR = 'saldo_cor';
+const CHAVE_TUTORIAL_VISTO = 'saldo_tutorial_visto';
 const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
 const CHAVE_TOKEN = 'saldo_token';
@@ -144,6 +145,48 @@ const btnTutorialAnterior = document.getElementById('btnTutorialAnterior');
 const btnTutorialProximo = document.getElementById('btnTutorialProximo');
 const coresGradeEl = document.getElementById('coresGrade');
 const coresExplicaEl = document.getElementById('coresExplica');
+
+// --- Tutorial de primeiro acesso ---
+const modalTutorialInicial = document.getElementById('modalTutorialInicial');
+const tutorialInicialSlides = document.querySelectorAll('[data-slide-inicial]');
+const tutorialInicialPontosEl = document.getElementById('tutorialInicialPontos');
+const btnTutorialInicialAnterior = document.getElementById('btnTutorialInicialAnterior');
+const btnTutorialInicialProximo = document.getElementById('btnTutorialInicialProximo');
+const btnFecharTutorialInicial = document.getElementById('btnFecharTutorialInicial');
+
+let slideInicialAtual = 0;
+
+function montarPontosTutorialInicial() {
+  tutorialInicialPontosEl.innerHTML = '';
+  tutorialInicialSlides.forEach((_, i) => {
+    const ponto = document.createElement('span');
+    ponto.className = 'tutorial-ponto' + (i === slideInicialAtual ? ' ativo' : '');
+    tutorialInicialPontosEl.appendChild(ponto);
+  });
+}
+
+function irParaSlideInicial(indice) {
+  slideInicialAtual = indice;
+  tutorialInicialSlides.forEach((slide, i) => slide.classList.toggle('ativo', i === indice));
+  montarPontosTutorialInicial();
+  btnTutorialInicialAnterior.style.visibility = indice === 0 ? 'hidden' : 'visible';
+  const ultimo = indice === tutorialInicialSlides.length - 1;
+  btnTutorialInicialProximo.style.display = ultimo ? 'none' : 'inline-block';
+  btnFecharTutorialInicial.style.display = ultimo ? 'block' : 'none';
+}
+
+btnTutorialInicialAnterior.addEventListener('click', () => irParaSlideInicial(Math.max(0, slideInicialAtual - 1)));
+btnTutorialInicialProximo.addEventListener('click', () => irParaSlideInicial(Math.min(tutorialInicialSlides.length - 1, slideInicialAtual + 1)));
+btnFecharTutorialInicial.addEventListener('click', () => {
+  modalTutorialInicial.classList.add('escondido');
+  localStorage.setItem(CHAVE_TUTORIAL_VISTO, '1');
+});
+
+function mostrarTutorialInicialSeNecessario() {
+  if (localStorage.getItem(CHAVE_TUTORIAL_VISTO) === '1') return;
+  irParaSlideInicial(0);
+  modalTutorialInicial.classList.remove('escondido');
+}
 
 // --- Personalização de cores (Ultimate) ---
 function aplicarCor(cor) {
@@ -641,6 +684,7 @@ if ('serviceWorker' in navigator) {
 function verificarNome() {
   if (nomeUsuario) {
     modalBoasVindas.classList.add('escondido');
+  mostrarTutorialInicialSeNecessario();
     saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
   } else {
     modalBoasVindas.classList.remove('escondido');
@@ -703,6 +747,7 @@ async function finalizarLogin(dados) {
   saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
   atualizarBotaoPerfilTopo();
   modalBoasVindas.classList.add('escondido');
+  mostrarTutorialInicialSeNecessario();
   renderizarTudo();
 }
 
@@ -819,6 +864,7 @@ btnSemConta.addEventListener('click', () => {
   salvar();
   saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
   modalBoasVindas.classList.add('escondido');
+  mostrarTutorialInicialSeNecessario();
 });
 
 // --- Login com Google ---
@@ -852,12 +898,20 @@ function iniciarBotaoGoogle() {
     client_id: GOOGLE_CLIENT_ID,
     callback: processarLoginGoogle
   });
+  const container = document.getElementById('botaoGoogle');
+  const largura = Math.min(container.offsetWidth || 300, 350);
   google.accounts.id.renderButton(
-    document.getElementById('botaoGoogle'),
-    { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill' }
+    container,
+    { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: largura }
   );
 }
 window.iniciarBotaoGoogle = iniciarBotaoGoogle;
+
+window.addEventListener('resize', () => {
+  const container = document.getElementById('botaoGoogle');
+  if (container) container.innerHTML = '';
+  iniciarBotaoGoogle();
+});
 
 // Se o script do Google já tiver carregado antes desse ponto, inicia direto.
 // Senão, o próprio <script onload="..."> no HTML chama iniciarBotaoGoogle() quando terminar.
