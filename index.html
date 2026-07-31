@@ -52,9 +52,10 @@
     <div id="authErro" class="auth-erro"></div>
     <div id="authCarregando" class="auth-carregando" style="display:none;">Conectando ao servidor... (pode levar até 1 minuto se ele estava dormindo)</div>
 
-    <div id="botaoGoogle" style="margin-top:12px; display:flex; justify-content:center;"></div>
+    <div class="divisor-ou"><span>ou</span></div>
+    <div id="botaoGoogle" style="margin-top:4px; display:flex; justify-content:center;"></div>
 
-    <button id="btnSemConta" class="link-discreto" style="margin-top:14px;">Continuar sem conta (dados só neste aparelho)</button>
+    <button id="btnSemConta" class="link-discreto" style="margin-top:16px;">Continuar sem conta (dados só neste aparelho)</button>
   </div>
 </div>
 
@@ -172,11 +173,14 @@
           <input type="checkbox" id="checkRecorrente">
           <span>Repetir todo mês (gasto/ganho fixo)</span>
         </label>
-        <div class="form-row" id="linhaDiaRecorrente" style="display:none;margin-top:6px;">
-          <select id="diaRecorrente" class="select-cat">
+        <div id="linhaDiaRecorrente" style="display:none;margin-top:8px;">
+          <label class="campo-label" style="margin-top:0;">Em qual dia do mês?</label>
+          <select id="diaRecorrente" class="select-cat" style="margin-bottom:8px;">
             <!-- opções preenchidas via JS: dia 1 a 31 -->
           </select>
-          <input type="number" id="quantosMeses" placeholder="Quantos meses?" min="1" max="60" value="12">
+          <label class="campo-label">Por quantos meses repetir?</label>
+          <input type="number" id="quantosMeses" placeholder="Ex: 12" min="1" max="60" value="12">
+          <p class="campo-aviso">O app já cria todos os lançamentos futuros de uma vez — não precisa voltar aqui todo mês.</p>
         </div>
 
         <div class="dica-teclado">Enter adiciona · Esc cancela edição</div>
@@ -340,14 +344,15 @@
 
         <div class="config-fs-secao" id="fsCores">
           <h2>Personalização</h2>
-          <p class="config-fs-explica" id="coresExplica">Escolha a cor de destaque do app. Recurso exclusivo do plano Ultimate.</p>
+          <p class="config-fs-explica" id="coresExplica">Escolha a cor de destaque do app.</p>
           <div class="cores-grade" id="coresGrade">
-            <button class="cor-opcao" data-cor="azul" style="--amostra:#3b82f6;"><span></span>Azul</button>
-            <button class="cor-opcao" data-cor="roxo" style="--amostra:#8b5cf6;"><span></span>Roxo</button>
-            <button class="cor-opcao" data-cor="verde" style="--amostra:#10b981;"><span></span>Verde</button>
-            <button class="cor-opcao" data-cor="laranja" style="--amostra:#f97316;"><span></span>Laranja</button>
-            <button class="cor-opcao" data-cor="rosa" style="--amostra:#ec4899;"><span></span>Rosa</button>
-            <button class="cor-opcao" data-cor="vermelho" style="--amostra:#ef4444;"><span></span>Vermelho</button>
+            <button class="cor-opcao" data-cor="azul" data-nivel="free" style="--amostra:#3b82f6;"><span></span>Azul</button>
+            <button class="cor-opcao" data-cor="verde" data-nivel="pro" style="--amostra:#10b981;"><span></span>Verde</button>
+            <button class="cor-opcao" data-cor="laranja" data-nivel="pro" style="--amostra:#f97316;"><span></span>Laranja</button>
+            <button class="cor-opcao" data-cor="roxo" data-nivel="ultimate" style="--amostra:#8b5cf6;"><span></span>Roxo</button>
+            <button class="cor-opcao" data-cor="rosa" data-nivel="ultimate" style="--amostra:#ec4899;"><span></span>Rosa</button>
+            <button class="cor-opcao" data-cor="vermelho" data-nivel="ultimate" style="--amostra:#ef4444;"><span></span>Vermelho</button>
+            <button class="cor-opcao cor-rgb" data-cor="rgb" data-nivel="ultimate"><span class="amostra-rgb"></span>RGB</button>
           </div>
         </div>
 
@@ -370,6 +375,7 @@
             <div class="sobre-versao">Versão 1.0.0</div>
             <p class="sobre-texto" style="margin:0;max-width:100%;">Um app simples de controle de gastos e ganhos, feito para aprender e organizar a vida financeira.</p>
           </div>
+          <button id="btnReverTutorial" class="btn-ghost-sm" style="margin-top:16px;">Rever tutorial de boas-vindas</button>
         </div>
 
       </div>

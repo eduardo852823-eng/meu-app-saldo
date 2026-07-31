@@ -235,29 +235,33 @@ function mostrarTutorialInicialSeNecessario() {
   setTimeout(() => irParaPassoTour(0), 50);
 }
 
+document.getElementById('btnReverTutorial').addEventListener('click', () => {
+  configFullscreen.classList.add('escondido');
+  tourOverlay.classList.remove('escondido');
+  setTimeout(() => irParaPassoTour(0), 50);
+});
+
 // --- Personalização de cores (Ultimate) ---
 function aplicarCor(cor) {
   document.documentElement.setAttribute('data-cor', cor);
 }
 
 function renderizarGradeCores() {
-  const liberado = temRecurso('ultimate');
-  coresExplicaEl.textContent = liberado
-    ? 'Escolha a cor de destaque do app.'
-    : 'Escolha a cor de destaque do app. Recurso exclusivo do plano Ultimate — ative o modo desenvolvedor ou assine pra usar.';
-
   coresGradeEl.querySelectorAll('.cor-opcao').forEach(btn => {
     const cor = btn.dataset.cor;
+    const nivel = btn.dataset.nivel;
+    const liberado = temRecurso(nivel);
     btn.classList.toggle('ativa', cor === corEscolhida);
-    btn.classList.toggle('bloqueada', !liberado && cor !== 'azul');
+    btn.classList.toggle('bloqueada', !liberado);
   });
 }
 
 coresGradeEl.querySelectorAll('.cor-opcao').forEach(btn => {
   btn.addEventListener('click', () => {
     const cor = btn.dataset.cor;
-    if (cor !== 'azul' && !temRecurso('ultimate')) {
-      alert('Essa cor é exclusiva do plano Ultimate.');
+    const nivel = btn.dataset.nivel;
+    if (!temRecurso(nivel)) {
+      alert(nivel === 'pro' ? 'Essa cor é exclusiva dos planos Pro e Ultimate.' : 'Essa cor é exclusiva do plano Ultimate.');
       return;
     }
     corEscolhida = cor;
@@ -362,6 +366,8 @@ function temRecurso(nivelMinimo) {
   return ordem[planoEfetivo()] >= ordem[nivelMinimo];
 }
 
+const NIVEL_DA_COR = { azul: 'free', verde: 'pro', laranja: 'pro', roxo: 'ultimate', rosa: 'ultimate', vermelho: 'ultimate', rgb: 'ultimate' };
+
 function aplicarGating() {
   const pro = temRecurso('pro');
   linhaCategoria.style.display = pro ? 'flex' : 'none';
@@ -369,7 +375,7 @@ function aplicarGating() {
   painelBusca.style.display = pro ? 'block' : 'none';
   painelLimite.style.display = pro ? 'block' : 'none';
 
-  if (!temRecurso('ultimate') && corEscolhida !== 'azul') {
+  if (!temRecurso(NIVEL_DA_COR[corEscolhida] || 'ultimate') && corEscolhida !== 'azul') {
     corEscolhida = 'azul';
   }
   aplicarCor(corEscolhida);
@@ -796,6 +802,8 @@ async function finalizarLogin(dados) {
   modalBoasVindas.classList.add('escondido');
   mostrarTutorialInicialSeNecessario();
   renderizarTudo();
+  document.querySelector('.hero').classList.add('flash-sucesso');
+  setTimeout(() => document.querySelector('.hero').classList.remove('flash-sucesso'), 900);
 }
 
 function mostrarFormCodigo(email) {
@@ -1000,7 +1008,7 @@ function preencherDiasRecorrente() {
 }
 
 checkRecorrente.addEventListener('change', () => {
-  linhaDiaRecorrente.style.display = checkRecorrente.checked ? 'flex' : 'none';
+  linhaDiaRecorrente.style.display = checkRecorrente.checked ? 'block' : 'none';
 });
 
 // --- Abas ---
