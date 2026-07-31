@@ -1,4 +1,4 @@
-const CACHE_NOME = 'saldo-cache-v18';
+const CACHE_NOME = 'saldo-cache-v19';
 const ARQUIVOS = [
   './index.html',
   './style.css',

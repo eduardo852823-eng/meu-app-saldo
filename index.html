@@ -176,9 +176,7 @@
           <select id="diaRecorrente" class="select-cat">
             <!-- opções preenchidas via JS: dia 1 a 31 -->
           </select>
-          <select id="quantosMeses" class="select-cat">
-            <!-- opções preenchidas via JS: quantos meses repetir -->
-          </select>
+          <input type="number" id="quantosMeses" placeholder="Quantos meses?" min="1" max="60" value="12">
         </div>
 
         <div class="dica-teclado">Enter adiciona · Esc cancela edição</div>
@@ -330,7 +328,7 @@
           </div>
           <label class="campo-label">E-mail (avisos dentro do app)</label>
           <input type="email" id="configEmail" placeholder="seuemail@gmail.com">
-          <p class="campo-aviso">Sem servidor próprio, não dá pra mandar e-mail de verdade — os avisos aparecem só aqui dentro do app.</p>
+          <p class="campo-aviso">Você recebe um resumo por e-mail todo dia às 8h, além dos avisos aqui dentro do app.</p>
           <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
         </div>
 
@@ -426,42 +424,18 @@
 
 </div>
 
-  <!-- Tutorial de primeiro acesso -->
-  <div class="modal-overlay escondido" id="modalTutorialInicial">
-    <div class="modal-card tutorial-card">
-      <div class="tutorial-slide-inicial ativo" data-slide-inicial="0">
-        <div class="modal-icone">👋</div>
-        <h1>Bem-vindo de vez!</h1>
-        <p class="modal-explica">Deixa eu te mostrar rapidinho as partes principais do app.</p>
+  <!-- Tutorial de primeiro acesso: spotlight nos botões reais -->
+  <div class="tour-overlay escondido" id="tourOverlay">
+    <div class="tour-anel" id="tourAnel"></div>
+    <div class="tour-balao" id="tourBalao">
+      <div class="tour-balao-titulo" id="tourTitulo">—</div>
+      <div class="tour-balao-texto" id="tourTexto">—</div>
+      <div class="tour-balao-nav">
+        <button id="btnTourAnterior" class="btn-ghost-sm" style="visibility:hidden;">‹ Voltar</button>
+        <div class="tutorial-pontos" id="tourPontos"></div>
+        <button id="btnTourProximo" class="btn-ghost-sm">Próximo ›</button>
       </div>
-      <div class="tutorial-slide-inicial" data-slide-inicial="1">
-        <div class="modal-icone" style="background:linear-gradient(135deg,#f87171,#dc2626);">↓↑</div>
-        <h1>Lançar</h1>
-        <p class="modal-explica">Aqui você anota o que gastou ou recebeu. Escolhe "Gastei" ou "Recebi" e clica em Adicionar.</p>
-      </div>
-      <div class="tutorial-slide-inicial" data-slide-inicial="2">
-        <div class="modal-icone" style="background:linear-gradient(135deg,#60a5fa,#2563eb);">📅</div>
-        <h1>Meses</h1>
-        <p class="modal-explica">Mostra se cada mês fechou no lucro ou no prejuízo, separadinho por período.</p>
-      </div>
-      <div class="tutorial-slide-inicial" data-slide-inicial="3">
-        <div class="modal-icone" style="background:linear-gradient(135deg,#34d399,#059669);">📊</div>
-        <h1>Análise</h1>
-        <p class="modal-explica">Suas metas de economia, comparação com o mês passado e maiores lançamentos.</p>
-      </div>
-      <div class="tutorial-slide-inicial" data-slide-inicial="4">
-        <div class="modal-icone" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);">👤⚙️</div>
-        <h1>Perfil e Config</h1>
-        <p class="modal-explica">No canto superior direito: sua foto/conta (esquerda) e as configurações do app (engrenagem, à direita).</p>
-      </div>
-
-      <div class="tutorial-nav">
-        <button id="btnTutorialInicialAnterior" class="btn-ghost-sm" style="visibility:hidden;">‹ Voltar</button>
-        <div class="tutorial-pontos" id="tutorialInicialPontos"></div>
-        <button id="btnTutorialInicialProximo" class="btn-ghost-sm">Próximo ›</button>
-      </div>
-
-      <button id="btnFecharTutorialInicial" class="btn-add" style="margin-top:14px;display:none;">Vamos começar!</button>
+      <button id="btnTourFechar" class="btn-add" style="margin-top:10px;display:none;">Entendi!</button>
     </div>
   </div>
 

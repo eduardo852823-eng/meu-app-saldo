@@ -147,46 +147,92 @@ const btnTutorialProximo = document.getElementById('btnTutorialProximo');
 const coresGradeEl = document.getElementById('coresGrade');
 const coresExplicaEl = document.getElementById('coresExplica');
 
-// --- Tutorial de primeiro acesso ---
-const modalTutorialInicial = document.getElementById('modalTutorialInicial');
-const tutorialInicialSlides = document.querySelectorAll('.tutorial-slide-inicial');
-const tutorialInicialPontosEl = document.getElementById('tutorialInicialPontos');
-const btnTutorialInicialAnterior = document.getElementById('btnTutorialInicialAnterior');
-const btnTutorialInicialProximo = document.getElementById('btnTutorialInicialProximo');
-const btnFecharTutorialInicial = document.getElementById('btnFecharTutorialInicial');
+// --- Tour de spotlight nos botões reais ---
+const tourOverlay = document.getElementById('tourOverlay');
+const tourAnel = document.getElementById('tourAnel');
+const tourBalao = document.getElementById('tourBalao');
+const tourTitulo = document.getElementById('tourTitulo');
+const tourTexto = document.getElementById('tourTexto');
+const tourPontosEl = document.getElementById('tourPontos');
+const btnTourAnterior = document.getElementById('btnTourAnterior');
+const btnTourProximo = document.getElementById('btnTourProximo');
+const btnTourFechar = document.getElementById('btnTourFechar');
 
-let slideInicialAtual = 0;
+const PASSOS_TOUR = [
+  { seletor: '[data-tab="lancar"]', titulo: 'Lançar', texto: 'Aqui você anota o que gastou ou recebeu. Escolhe "Gastei" ou "Recebi" e clica em Adicionar.' },
+  { seletor: '[data-tab="meses"]', titulo: 'Meses', texto: 'Mostra se cada mês fechou no lucro ou no prejuízo, separadinho por período.' },
+  { seletor: '[data-tab="analise"]', titulo: 'Análise', texto: 'Suas metas de economia, comparação com o mês passado e maiores lançamentos.' },
+  { seletor: '#btnPerfil', titulo: 'Seu perfil', texto: 'Clica aqui pra ver sua conta, foto e data de criação.' },
+  { seletor: '#btnConfig', titulo: 'Configurações', texto: 'Aqui ficam plano, personalização, modo desenvolvedor e mais.' }
+];
 
-function montarPontosTutorialInicial() {
-  tutorialInicialPontosEl.innerHTML = '';
-  tutorialInicialSlides.forEach((_, i) => {
+let passoTourAtual = 0;
+
+function posicionarTour(indice) {
+  const passo = PASSOS_TOUR[indice];
+  const alvo = document.querySelector(passo.seletor);
+  if (!alvo) { irParaPassoTour(indice + 1); return; }
+
+  const rect = alvo.getBoundingClientRect();
+  const folga = 6;
+
+  tourAnel.style.top = (rect.top - folga) + 'px';
+  tourAnel.style.left = (rect.left - folga) + 'px';
+  tourAnel.style.width = (rect.width + folga * 2) + 'px';
+  tourAnel.style.height = (rect.height + folga * 2) + 'px';
+
+  tourTitulo.textContent = passo.titulo;
+  tourTexto.textContent = passo.texto;
+
+  // Posiciona o balão embaixo do elemento (ou acima, se não couber)
+  const balaoTop = rect.bottom + 16;
+  const caberEmbaixo = balaoTop + 180 < window.innerHeight;
+  tourBalao.style.top = caberEmbaixo ? balaoTop + 'px' : Math.max(16, rect.top - 190) + 'px';
+
+  let left = rect.left + rect.width / 2 - 130;
+  left = Math.max(16, Math.min(left, window.innerWidth - 276));
+  tourBalao.style.left = left + 'px';
+}
+
+function montarPontosTour() {
+  tourPontosEl.innerHTML = '';
+  PASSOS_TOUR.forEach((_, i) => {
     const ponto = document.createElement('span');
-    ponto.className = 'tutorial-ponto' + (i === slideInicialAtual ? ' ativo' : '');
-    tutorialInicialPontosEl.appendChild(ponto);
+    ponto.className = 'tutorial-ponto' + (i === passoTourAtual ? ' ativo' : '');
+    tourPontosEl.appendChild(ponto);
   });
 }
 
-function irParaSlideInicial(indice) {
-  slideInicialAtual = indice;
-  tutorialInicialSlides.forEach((slide, i) => slide.classList.toggle('ativo', i === indice));
-  montarPontosTutorialInicial();
-  btnTutorialInicialAnterior.style.visibility = indice === 0 ? 'hidden' : 'visible';
-  const ultimo = indice === tutorialInicialSlides.length - 1;
-  btnTutorialInicialProximo.style.display = ultimo ? 'none' : 'inline-block';
-  btnFecharTutorialInicial.style.display = ultimo ? 'block' : 'none';
+function irParaPassoTour(indice) {
+  if (indice >= PASSOS_TOUR.length) {
+    fecharTour();
+    return;
+  }
+  passoTourAtual = indice;
+  posicionarTour(indice);
+  montarPontosTour();
+  btnTourAnterior.style.visibility = indice === 0 ? 'hidden' : 'visible';
+  const ultimo = indice === PASSOS_TOUR.length - 1;
+  btnTourProximo.style.display = ultimo ? 'none' : 'inline-block';
+  btnTourFechar.style.display = ultimo ? 'block' : 'none';
 }
 
-btnTutorialInicialAnterior.addEventListener('click', () => irParaSlideInicial(Math.max(0, slideInicialAtual - 1)));
-btnTutorialInicialProximo.addEventListener('click', () => irParaSlideInicial(Math.min(tutorialInicialSlides.length - 1, slideInicialAtual + 1)));
-btnFecharTutorialInicial.addEventListener('click', () => {
-  modalTutorialInicial.classList.add('escondido');
+function fecharTour() {
+  tourOverlay.classList.add('escondido');
   localStorage.setItem(CHAVE_TUTORIAL_VISTO, '1');
+}
+
+btnTourAnterior.addEventListener('click', () => irParaPassoTour(Math.max(0, passoTourAtual - 1)));
+btnTourProximo.addEventListener('click', () => irParaPassoTour(passoTourAtual + 1));
+btnTourFechar.addEventListener('click', fecharTour);
+window.addEventListener('resize', () => {
+  if (!tourOverlay.classList.contains('escondido')) posicionarTour(passoTourAtual);
 });
 
 function mostrarTutorialInicialSeNecessario() {
   if (localStorage.getItem(CHAVE_TUTORIAL_VISTO) === '1') return;
-  irParaSlideInicial(0);
-  modalTutorialInicial.classList.remove('escondido');
+  tourOverlay.classList.remove('escondido');
+  setTimeout(() => irParaPassoTour(0), 50);
 }
 
 // --- Personalização de cores (Ultimate) ---
@@ -951,15 +997,6 @@ function preencherDiasRecorrente() {
     opt.textContent = dia > 28 ? `Todo dia ${dia} (meses menores usam o último dia)` : `Todo dia ${dia}`;
     diaRecorrenteSelect.appendChild(opt);
   }
-
-  quantosMesesSelect.innerHTML = '';
-  [1, 2, 3, 6, 9, 12, 18, 24].forEach(qtd => {
-    const opt = document.createElement('option');
-    opt.value = qtd;
-    opt.textContent = qtd === 1 ? 'Só este mês' : `Por ${qtd} meses`;
-    quantosMesesSelect.appendChild(opt);
-  });
-  quantosMesesSelect.value = 12;
 }
 
 checkRecorrente.addEventListener('change', () => {
@@ -1121,7 +1158,9 @@ form.addEventListener('submit', (e) => {
 
     if (ehRecorrente) {
       const dia = parseInt(diaRecorrenteSelect.value);
-      const qtdMeses = parseInt(quantosMesesSelect.value);
+      let qtdMeses = parseInt(quantosMesesSelect.value);
+      if (isNaN(qtdMeses) || qtdMeses < 1) qtdMeses = 1;
+      if (qtdMeses > 60) qtdMeses = 60;
       const agora = new Date();
 
       for (let i = 0; i < qtdMeses; i++) {

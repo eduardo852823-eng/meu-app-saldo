@@ -60,6 +60,14 @@ button:active {
   transform: scale(0.94);
 }
 
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.tab-btn:hover, .filtro-btn:hover, .config-side-item:hover {
+  transform: none;
+}
+
 html[data-cor] {
   transition: background-color 0.4s ease;
 }
@@ -1270,6 +1278,64 @@ html[data-cor="vermelho"] { --blue: #ef4444; --blue-bright: #f87171; --blue-deep
 
 .cor-opcao.bloqueada { opacity: 0.4; cursor: not-allowed; }
 .cor-opcao.bloqueada:hover { transform: none; }
+/* Tour de spotlight nos botões reais */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(2,4,10,0.75);
+  backdrop-filter: blur(2px);
+}
+
+.tour-overlay.escondido { display: none; }
+
+.tour-anel {
+  position: fixed;
+  border: 3px solid var(--blue-bright);
+  border-radius: 16px;
+  box-shadow: 0 0 0 6000px rgba(2,4,10,0.75), 0 0 24px var(--blue-bright);
+  transition: all 0.4s cubic-bezier(.4,1.4,.4,1);
+  pointer-events: none;
+  animation: pulseAnel 1.4s ease-in-out infinite;
+}
+
+@keyframes pulseAnel {
+  0%, 100% { box-shadow: 0 0 0 6000px rgba(2,4,10,0.75), 0 0 18px var(--blue-bright); }
+  50% { box-shadow: 0 0 0 6000px rgba(2,4,10,0.75), 0 0 30px var(--blue-bright); }
+}
+
+.tour-balao {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  width: 260px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  transition: all 0.4s cubic-bezier(.4,1.4,.4,1);
+  animation: fadeUp 0.3s ease both;
+}
+
+.tour-balao-titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.tour-balao-texto {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.tour-balao-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .config-linha {
   display: flex;
   align-items: center;
