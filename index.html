@@ -174,7 +174,10 @@
         </label>
         <div class="form-row" id="linhaDiaRecorrente" style="display:none;margin-top:6px;">
           <select id="diaRecorrente" class="select-cat">
-            <!-- opções preenchidas via JS: dia 1 a 28 -->
+            <!-- opções preenchidas via JS: dia 1 a 31 -->
+          </select>
+          <select id="quantosMeses" class="select-cat">
+            <!-- opções preenchidas via JS: quantos meses repetir -->
           </select>
         </div>
 
@@ -426,27 +429,27 @@
   <!-- Tutorial de primeiro acesso -->
   <div class="modal-overlay escondido" id="modalTutorialInicial">
     <div class="modal-card tutorial-card">
-      <div class="tutorial-slide ativo" data-slide-inicial="0">
+      <div class="tutorial-slide-inicial ativo" data-slide-inicial="0">
         <div class="modal-icone">👋</div>
         <h1>Bem-vindo de vez!</h1>
         <p class="modal-explica">Deixa eu te mostrar rapidinho as partes principais do app.</p>
       </div>
-      <div class="tutorial-slide" data-slide-inicial="1">
+      <div class="tutorial-slide-inicial" data-slide-inicial="1">
         <div class="modal-icone" style="background:linear-gradient(135deg,#f87171,#dc2626);">↓↑</div>
         <h1>Lançar</h1>
         <p class="modal-explica">Aqui você anota o que gastou ou recebeu. Escolhe "Gastei" ou "Recebi" e clica em Adicionar.</p>
       </div>
-      <div class="tutorial-slide" data-slide-inicial="2">
+      <div class="tutorial-slide-inicial" data-slide-inicial="2">
         <div class="modal-icone" style="background:linear-gradient(135deg,#60a5fa,#2563eb);">📅</div>
         <h1>Meses</h1>
         <p class="modal-explica">Mostra se cada mês fechou no lucro ou no prejuízo, separadinho por período.</p>
       </div>
-      <div class="tutorial-slide" data-slide-inicial="3">
+      <div class="tutorial-slide-inicial" data-slide-inicial="3">
         <div class="modal-icone" style="background:linear-gradient(135deg,#34d399,#059669);">📊</div>
         <h1>Análise</h1>
         <p class="modal-explica">Suas metas de economia, comparação com o mês passado e maiores lançamentos.</p>
       </div>
-      <div class="tutorial-slide" data-slide-inicial="4">
+      <div class="tutorial-slide-inicial" data-slide-inicial="4">
         <div class="modal-icone" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);">👤⚙️</div>
         <h1>Perfil e Config</h1>
         <p class="modal-explica">No canto superior direito: sua foto/conta (esquerda) e as configurações do app (engrenagem, à direita).</p>

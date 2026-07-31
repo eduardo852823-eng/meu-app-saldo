@@ -135,6 +135,7 @@ const btnMostrarSenha = document.getElementById('btnMostrarSenha');
 // Recorrente com dia
 const linhaDiaRecorrente = document.getElementById('linhaDiaRecorrente');
 const diaRecorrenteSelect = document.getElementById('diaRecorrente');
+const quantosMesesSelect = document.getElementById('quantosMeses');
 
 // Modal de compra
 const modalCompra = document.getElementById('modalCompra');
@@ -148,7 +149,7 @@ const coresExplicaEl = document.getElementById('coresExplica');
 
 // --- Tutorial de primeiro acesso ---
 const modalTutorialInicial = document.getElementById('modalTutorialInicial');
-const tutorialInicialSlides = document.querySelectorAll('[data-slide-inicial]');
+const tutorialInicialSlides = document.querySelectorAll('.tutorial-slide-inicial');
 const tutorialInicialPontosEl = document.getElementById('tutorialInicialPontos');
 const btnTutorialInicialAnterior = document.getElementById('btnTutorialInicialAnterior');
 const btnTutorialInicialProximo = document.getElementById('btnTutorialInicialProximo');
@@ -944,12 +945,21 @@ btnMostrarSenha.addEventListener('click', () => {
 // --- Preencher dias do mês pro gasto recorrente ---
 function preencherDiasRecorrente() {
   diaRecorrenteSelect.innerHTML = '';
-  for (let dia = 1; dia <= 28; dia++) {
+  for (let dia = 1; dia <= 31; dia++) {
     const opt = document.createElement('option');
     opt.value = dia;
-    opt.textContent = `Todo dia ${dia}`;
+    opt.textContent = dia > 28 ? `Todo dia ${dia} (meses menores usam o último dia)` : `Todo dia ${dia}`;
     diaRecorrenteSelect.appendChild(opt);
   }
+
+  quantosMesesSelect.innerHTML = '';
+  [1, 2, 3, 6, 9, 12, 18, 24].forEach(qtd => {
+    const opt = document.createElement('option');
+    opt.value = qtd;
+    opt.textContent = qtd === 1 ? 'Só este mês' : `Por ${qtd} meses`;
+    quantosMesesSelect.appendChild(opt);
+  });
+  quantosMesesSelect.value = 12;
 }
 
 checkRecorrente.addEventListener('change', () => {
@@ -1107,16 +1117,41 @@ form.addEventListener('submit', (e) => {
     }
     sairModoEdicao();
   } else {
-    lancamentos.unshift({
-      id: Date.now(),
-      descricao,
-      valor,
-      tipo: tipoAtual,
-      categoria: temRecurso('pro') ? selectCat.value : '',
-      recorrente: temRecurso('pro') && checkRecorrente.checked,
-      diaRecorrente: (temRecurso('pro') && checkRecorrente.checked) ? parseInt(diaRecorrenteSelect.value) : null,
-      data: new Date()
-    });
+    const ehRecorrente = temRecurso('pro') && checkRecorrente.checked;
+
+    if (ehRecorrente) {
+      const dia = parseInt(diaRecorrenteSelect.value);
+      const qtdMeses = parseInt(quantosMesesSelect.value);
+      const agora = new Date();
+
+      for (let i = 0; i < qtdMeses; i++) {
+        const dataLancamento = new Date(agora.getFullYear(), agora.getMonth() + i, 1);
+        const ultimoDiaDoMes = new Date(dataLancamento.getFullYear(), dataLancamento.getMonth() + 1, 0).getDate();
+        dataLancamento.setDate(Math.min(dia, ultimoDiaDoMes));
+
+        lancamentos.unshift({
+          id: Date.now() + i,
+          descricao,
+          valor,
+          tipo: tipoAtual,
+          categoria: selectCat.value,
+          recorrente: true,
+          diaRecorrente: dia,
+          data: dataLancamento
+        });
+      }
+    } else {
+      lancamentos.unshift({
+        id: Date.now(),
+        descricao,
+        valor,
+        tipo: tipoAtual,
+        categoria: temRecurso('pro') ? selectCat.value : '',
+        recorrente: false,
+        diaRecorrente: null,
+        data: new Date()
+      });
+    }
   }
 
   salvar();
