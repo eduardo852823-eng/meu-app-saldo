@@ -467,6 +467,82 @@ html[data-layout="cards"] .tab-btn.active {
 html[data-layout="cards"] .tabs-dica { display: none; }
 html[data-layout="cards"] .painel { border-radius: 24px; }
 
+/* ===== Layout: Mínimo (Free) — flat, sem cartões, só divisórias ===== */
+html[data-layout="minimo"] .painel {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 18px 4px;
+  backdrop-filter: none;
+}
+html[data-layout="minimo"] input,
+html[data-layout="minimo"] .select-cat {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--line);
+  border-radius: 0;
+  padding: 10px 2px;
+}
+html[data-layout="minimo"] .tipo-toggle { background: transparent; border: none; border-bottom: 1.5px solid var(--line); border-radius: 0; }
+html[data-layout="minimo"] .btn-add { border-radius: 6px; box-shadow: none; }
+html[data-layout="minimo"] .tabs { background: transparent; border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 4px 0; }
+html[data-layout="minimo"] .tab-btn.active { background: transparent; border-bottom: 2px solid var(--blue-bright); border-radius: 0; }
+
+/* ===== Layout: Moderno (Pro) — cartões com borda de destaque lateral ===== */
+html[data-layout="moderno"] .painel {
+  border-left: 3px solid var(--blue-bright);
+  border-radius: 8px 20px 20px 8px;
+  background: linear-gradient(135deg, var(--panel), var(--panel-2));
+}
+html[data-layout="moderno"] input,
+html[data-layout="moderno"] .select-cat {
+  border-radius: 20px;
+  background: var(--bg-soft);
+}
+html[data-layout="moderno"] .btn-add {
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--cyan), var(--blue-deep));
+}
+html[data-layout="moderno"] .tipo-toggle { border-radius: 20px; }
+html[data-layout="moderno"] .tipo-btn { border-radius: 17px; }
+html[data-layout="moderno"] .tabs { border-radius: 20px; }
+html[data-layout="moderno"] .tab-btn.active { border-radius: 16px; }
+
+/* ===== Layout: Neon (Ultimate) — bordas brilhantes, fundo escuro puro ===== */
+html[data-layout="neon"] .painel {
+  background: #05060b;
+  border: 1px solid var(--blue-bright);
+  box-shadow: 0 0 20px -4px var(--blue-bright), inset 0 0 30px -20px var(--blue-bright);
+  border-radius: 14px;
+}
+html[data-layout="neon"] input,
+html[data-layout="neon"] .select-cat {
+  background: #05060b;
+  border: 1px solid var(--line);
+}
+html[data-layout="neon"] input:focus,
+html[data-layout="neon"] .select-cat:focus {
+  border-color: var(--blue-bright);
+  box-shadow: 0 0 12px var(--blue-bright);
+}
+html[data-layout="neon"] .btn-add {
+  background: #05060b;
+  border: 1px solid var(--cyan);
+  box-shadow: 0 0 14px var(--cyan);
+  color: var(--cyan);
+}
+html[data-layout="neon"] .tabs {
+  background: #05060b;
+  border: 1px solid var(--line);
+}
+html[data-layout="neon"] .tab-btn.active {
+  background: transparent;
+  color: var(--cyan);
+  box-shadow: inset 0 0 12px -2px var(--cyan);
+  border: 1px solid var(--cyan);
+}
+
 .item:hover { border-color: var(--blue); transform: translateY(-1px); }
 .item:active { transform: scale(0.98); }
 

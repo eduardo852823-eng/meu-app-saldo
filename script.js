@@ -301,7 +301,7 @@ coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
   });
 });
 const layoutGradeEl = document.getElementById('layoutGrade');
-const nivelLayout = { padrao: 'free', compacto: 'pro', cards: 'ultimate' };
+const nivelLayout = { padrao: 'free', minimo: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
 
 function renderizarGradeLayout() {
   layoutGradeEl.querySelectorAll('.layout-opcao').forEach(btn => {
@@ -456,7 +456,7 @@ function aplicarGating() {
   }
   aplicarCor(corEscolhida);
 
-  const nivelLayout = { padrao: 'free', compacto: 'pro', cards: 'ultimate' };
+  const nivelLayout = { padrao: 'free', minimo: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
   if (!temRecurso(nivelLayout[layoutAtual] || 'ultimate')) {
     layoutAtual = 'padrao';
   }
