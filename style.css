@@ -426,6 +426,47 @@ input:focus {
   transition: transform 0.15s, border-color 0.2s;
 }
 
+/* ===== Layout: Compacto (Pro) — abas fixas embaixo, estilo barra de app ===== */
+html[data-layout="compacto"] .app { padding-bottom: 86px; }
+html[data-layout="compacto"] .tabs {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: calc(100% - 28px);
+  max-width: 452px;
+  z-index: 80;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  margin-bottom: 0;
+}
+html[data-layout="compacto"] .tabs-dica { display: none; }
+html[data-layout="compacto"] .tab-conteudo.ativo { order: -1; }
+html[data-layout="compacto"] #tab-lancar .painel:first-child { order: -1; }
+
+/* ===== Layout: Cards (Ultimate) — abas em cartões grandes no topo ===== */
+html[data-layout="cards"] .tabs {
+  background: transparent;
+  border: none;
+  padding: 0;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+html[data-layout="cards"] .tab-btn {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 8px;
+  font-size: 12px;
+}
+html[data-layout="cards"] .tab-btn.active {
+  background: linear-gradient(135deg, var(--blue-bright), var(--blue-deep));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 8px 20px rgba(59,130,246,0.4);
+}
+html[data-layout="cards"] .tabs-dica { display: none; }
+html[data-layout="cards"] .painel { border-radius: 24px; }
+
 .item:hover { border-color: var(--blue); transform: translateY(-1px); }
 .item:active { transform: scale(0.98); }
 
