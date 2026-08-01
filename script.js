@@ -18,6 +18,7 @@ let tokenSessao = '';
 let criadoEm = '';
 let corEscolhida = 'azul';
 let corLivreHex = '#3b82f6';
+let layoutAtual = 'padrao';
 
 // --- Chaves de armazenamento ---
 const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
@@ -34,6 +35,7 @@ const CHAVE_LIMITE = 'saldo_limite';
 const CHAVE_CRIADOEM = 'saldo_criadoem';
 const CHAVE_COR = 'saldo_cor';
 const CHAVE_COR_HEX = 'saldo_cor_hex';
+const CHAVE_LAYOUT = 'saldo_layout';
 const CHAVE_TUTORIAL_VISTO = 'saldo_tutorial_visto';
 const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
@@ -298,6 +300,31 @@ coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
     renderizarGradeCores();
   });
 });
+const layoutGradeEl = document.getElementById('layoutGrade');
+const nivelLayout = { padrao: 'free', compacto: 'pro', cards: 'ultimate' };
+
+function renderizarGradeLayout() {
+  layoutGradeEl.querySelectorAll('.layout-opcao').forEach(btn => {
+    const layout = btn.dataset.layout;
+    btn.classList.toggle('ativa', layout === layoutAtual);
+    btn.classList.toggle('bloqueada', !temRecurso(nivelLayout[layout]));
+  });
+}
+
+layoutGradeEl.querySelectorAll('.layout-opcao').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const layout = btn.dataset.layout;
+    if (!temRecurso(nivelLayout[layout])) {
+      alert('Esse layout precisa de um plano superior.');
+      return;
+    }
+    layoutAtual = layout;
+    document.documentElement.setAttribute('data-layout', layoutAtual);
+    salvar();
+    renderizarGradeLayout();
+  });
+});
+
 const corLivreInput = document.getElementById('corLivreInput');
 const corLivreLabel = document.getElementById('corLivreLabel');
 corLivreLabel.addEventListener('click', (e) => {
@@ -361,6 +388,7 @@ function salvar() {
     localStorage.setItem(CHAVE_CRIADOEM, criadoEm);
     localStorage.setItem(CHAVE_COR, corEscolhida);
     localStorage.setItem(CHAVE_COR_HEX, corLivreHex);
+    localStorage.setItem(CHAVE_LAYOUT, layoutAtual);
   } catch (e) {
     console.warn('Não foi possível salvar os dados localmente.', e);
   }
@@ -397,6 +425,7 @@ function carregar() {
     criadoEm = localStorage.getItem(CHAVE_CRIADOEM) || '';
     corEscolhida = localStorage.getItem(CHAVE_COR) || 'azul';
     corLivreHex = localStorage.getItem(CHAVE_COR_HEX) || '#3b82f6';
+    layoutAtual = localStorage.getItem(CHAVE_LAYOUT) || 'padrao';
   } catch (e) {
     console.warn('Não foi possível carregar os dados salvos.', e);
     lancamentos = [];
@@ -426,6 +455,12 @@ function aplicarGating() {
     corEscolhida = 'azul';
   }
   aplicarCor(corEscolhida);
+
+  const nivelLayout = { padrao: 'free', compacto: 'pro', cards: 'ultimate' };
+  if (!temRecurso(nivelLayout[layoutAtual] || 'ultimate')) {
+    layoutAtual = 'padrao';
+  }
+  document.documentElement.setAttribute('data-layout', layoutAtual);
 
   if (!temRecurso('ultimate') && metas.length > 1) {
     metas = metas.slice(0, 1);
@@ -556,7 +591,7 @@ configSideItens.forEach(item => {
     const alvo = document.getElementById(`fs${secao.charAt(0).toUpperCase()}${secao.slice(1)}`);
     if (alvo) alvo.classList.add('ativa');
     if (secao === 'plano') renderizarComparativo();
-    if (secao === 'cores') renderizarGradeCores();
+    if (secao === 'cores') { renderizarGradeCores(); renderizarGradeLayout(); }
     if (secao === 'perfil') carregarCamposPerfil();
   });
 });
@@ -1135,17 +1170,38 @@ inputImportar.addEventListener('change', (e) => {
 });
 
 // --- Resetar tudo ---
-btnResetar.addEventListener('click', () => {
-  const confirmacao = prompt('Isso vai apagar TODOS os dados, incluindo seu nome e meta. Digite "resetar" para confirmar:');
+btnResetar.addEventListener('click', async () => {
+  const confirmacao = prompt('Isso vai apagar TODOS os dados. Digite "resetar" para confirmar:');
   if (confirmacao !== 'resetar') return;
+
+  if (tokenSessao) {
+    try {
+      await fetch(API_URL + '/dados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tokenSessao },
+        body: JSON.stringify({ lancamentos: [], metaAlvo: null, foto: '', planoAtual: 'free', devAtivo: false, corEscolhida: 'azul', limiteGasto: null, metas: [] })
+      });
+    } catch (erro) {
+      console.warn('Não consegui limpar os dados no servidor agora.', erro);
+    }
+  }
 
   lancamentos = [];
   metaAlvo = null;
+  metas = [];
   nomeUsuario = '';
-  localStorage.removeItem(CHAVE_LANCAMENTOS);
-  localStorage.removeItem(CHAVE_META);
-  localStorage.removeItem(CHAVE_NOME);
+  fotoUsuario = '';
+  planoAtual = 'free';
+  devAtivo = false;
+  corEscolhida = 'azul';
+  layoutAtual = 'padrao';
+  limiteGasto = null;
 
+  localStorage.clear();
+  salvar();
+  aplicarGating();
+  aplicarCor(corEscolhida);
+  atualizarBotaoPerfilTopo();
   renderizarTudo();
   verificarNome();
 });
@@ -1335,15 +1391,48 @@ function criarItemEl(item) {
       ${tagCat}${tagRecorrente}
     </div>
     <div class="item-valor">${sinal} ${formatarMoeda(item.valor)}</div>
-    <button class="item-editar" title="Editar">✎</button>
-    <button class="item-del" title="Remover">✕</button>
   `;
 
-  li.querySelector('.item-del').addEventListener('click', () => removerItem(item.id, li));
-  li.querySelector('.item-editar').addEventListener('click', () => iniciarEdicao(item));
+  li.addEventListener('click', () => abrirAcaoItem(item));
 
   return li;
 }
+
+// --- Popup de ação (editar/excluir) ---
+const modalAcaoItem = document.getElementById('modalAcaoItem');
+const acaoItemTitulo = document.getElementById('acaoItemTitulo');
+const btnAcaoEditar = document.getElementById('btnAcaoEditar');
+const btnAcaoExcluir = document.getElementById('btnAcaoExcluir');
+const btnAcaoCancelar = document.getElementById('btnAcaoCancelar');
+let itemAcaoAtual = null;
+
+function abrirAcaoItem(item) {
+  itemAcaoAtual = item;
+  acaoItemTitulo.textContent = item.descricao;
+  modalAcaoItem.classList.remove('escondido');
+}
+
+function fecharAcaoItem() {
+  modalAcaoItem.classList.add('escondido');
+  itemAcaoAtual = null;
+}
+
+btnAcaoCancelar.addEventListener('click', fecharAcaoItem);
+modalAcaoItem.addEventListener('click', (e) => { if (e.target === modalAcaoItem) fecharAcaoItem(); });
+
+btnAcaoEditar.addEventListener('click', () => {
+  if (itemAcaoAtual) iniciarEdicao(itemAcaoAtual);
+  fecharAcaoItem();
+});
+
+btnAcaoExcluir.addEventListener('click', () => {
+  if (!itemAcaoAtual) return;
+  const id = itemAcaoAtual.id;
+  const elemento = document.querySelector(`.item[data-id="${id}"]`);
+  fecharAcaoItem();
+  if (elemento) removerItem(id, elemento);
+  else { lancamentos = lancamentos.filter(l => l.id !== id); salvar(); renderizarTudo(); }
+});
 
 // --- Editar ---
 function iniciarEdicao(item) {

@@ -357,6 +357,13 @@
               <input type="color" id="corLivreInput" style="position:absolute;opacity:0;width:1px;height:1px;">
             </label>
           </div>
+
+          <p class="config-fs-explica" style="margin-top:24px;">Escolha como a lista de lançamentos aparece.</p>
+          <div class="cores-grade" id="layoutGrade">
+            <button class="cor-opcao layout-opcao" data-layout="padrao" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">📋</span>Padrão</button>
+            <button class="cor-opcao layout-opcao" data-layout="compacto" data-nivel="pro"><span style="background:none;box-shadow:none;font-size:20px;">📃</span>Compacto</button>
+            <button class="cor-opcao layout-opcao" data-layout="cards" data-nivel="ultimate"><span style="background:none;box-shadow:none;font-size:20px;">🗂️</span>Cards</button>
+          </div>
         </div>
 
         <div class="config-fs-secao" id="fsDev">
@@ -445,6 +452,16 @@
         <button id="btnTourProximo" class="btn-ghost-sm">Próximo ›</button>
       </div>
       <button id="btnTourFechar" class="btn-add" style="margin-top:10px;display:none;">Entendi!</button>
+    </div>
+  </div>
+
+  <!-- Modal de ação do item (editar/excluir) -->
+  <div class="modal-overlay escondido" id="modalAcaoItem">
+    <div class="modal-card" style="max-width:280px;padding:26px 22px;">
+      <h1 id="acaoItemTitulo" style="font-size:16px;margin-bottom:18px;">Lançamento</h1>
+      <button id="btnAcaoEditar" class="btn-add" style="width:100%;margin-bottom:10px;">✎ Editar</button>
+      <button id="btnAcaoExcluir" class="btn-add" style="width:100%;background:linear-gradient(135deg,#f87171,#b91c1c);box-shadow:0 4px 16px rgba(248,113,113,0.35);margin-bottom:10px;">✕ Excluir</button>
+      <button id="btnAcaoCancelar" class="link-discreto">Cancelar</button>
     </div>
   </div>
 
