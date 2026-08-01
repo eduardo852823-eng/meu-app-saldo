@@ -35,7 +35,9 @@ const lancamentoSchema = new mongoose.Schema({
 const metaSchema = new mongoose.Schema({
   id: Number,
   nome: String,
-  valor: Number
+  valor: Number,
+  acumulado: { type: Number, default: 0 },
+  completa: { type: Boolean, default: false }
 }, { _id: false });
 
 const usuarioSchema = new mongoose.Schema({
@@ -50,6 +52,8 @@ const usuarioSchema = new mongoose.Schema({
   codigoExpira: Date,
   foto: String,
   corEscolhida: { type: String, default: 'azul' },
+  corLivreHex: { type: String, default: '#3b82f6' },
+  layoutAtual: { type: String, default: 'padrao' },
   planoAtual: { type: String, default: 'free' },
   devAtivo: { type: Boolean, default: false },
   limiteGasto: { type: Number, default: null },
@@ -319,6 +323,8 @@ app.get('/dados', autenticar, (req, res) => {
     criadoEm: req.usuario.criadoEm,
     foto: req.usuario.foto,
     corEscolhida: req.usuario.corEscolhida,
+    corLivreHex: req.usuario.corLivreHex,
+    layoutAtual: req.usuario.layoutAtual,
     planoAtual: req.usuario.planoAtual,
     devAtivo: req.usuario.devAtivo,
     limiteGasto: req.usuario.limiteGasto
@@ -328,7 +334,7 @@ app.get('/dados', autenticar, (req, res) => {
 // Salvar dados do usuário logado
 app.post('/dados', autenticar, async (req, res) => {
   try {
-    const { lancamentos, metaAlvo, foto, planoAtual, devAtivo, corEscolhida, limiteGasto, metas } = req.body;
+    const { lancamentos, metaAlvo, foto, planoAtual, devAtivo, corEscolhida, limiteGasto, metas, corLivreHex, layoutAtual } = req.body;
     req.usuario.lancamentos = lancamentos || [];
     req.usuario.metaAlvo = metaAlvo ?? null;
     if (metas !== undefined) req.usuario.metas = metas;
@@ -336,6 +342,8 @@ app.post('/dados', autenticar, async (req, res) => {
     if (planoAtual !== undefined) req.usuario.planoAtual = planoAtual;
     if (devAtivo !== undefined) req.usuario.devAtivo = devAtivo;
     if (corEscolhida !== undefined) req.usuario.corEscolhida = corEscolhida;
+    if (corLivreHex !== undefined) req.usuario.corLivreHex = corLivreHex;
+    if (layoutAtual !== undefined) req.usuario.layoutAtual = layoutAtual;
     if (limiteGasto !== undefined) req.usuario.limiteGasto = limiteGasto;
     await req.usuario.save();
     res.json({ ok: true });

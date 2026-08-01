@@ -467,7 +467,6 @@ html[data-layout="cards"] .tab-btn.active {
 html[data-layout="cards"] .tabs-dica { display: none; }
 html[data-layout="cards"] .painel { border-radius: 24px; }
 
-/* ===== Layout: PoupPix (Free) — hero navy/dourado, cards brancos ===== */
 html[data-layout="poupix"] {
   --bg: #0c1130;
   --bg-soft: #ffffff;
@@ -482,20 +481,37 @@ html[data-layout="poupix"] body::before,
 html[data-layout="poupix"] body::after { display: none; }
 html[data-layout="poupix"] .bg-grid { display: none; }
 
+html[data-layout="poupix"] .topbar {
+  background: #12173a;
+  border-radius: 26px 26px 0 0;
+  padding: 16px 20px 10px;
+  margin-bottom: 0;
+  color: #f4f6fb;
+}
+html[data-layout="poupix"] .brand-name { color: #f4f6fb; }
+html[data-layout="poupix"] .btn-tema,
+html[data-layout="poupix"] .btn-perfil-topo {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.16);
+  color: #fff;
+}
+html[data-layout="poupix"] .topbar-date { color: #c7cbe8; }
+
 html[data-layout="poupix"] .hero {
   background: #12173a;
-  border-radius: 26px;
-  padding: 26px 20px 30px;
+  border-radius: 0 0 26px 26px;
+  padding: 6px 20px 30px;
   color: #f4f6fb;
   margin-bottom: 18px;
 }
-html[data-layout="poupix"] .hero-saudacao,
-html[data-layout="poupix"] .hero-label { color: #c7cbe8; }
+html[data-layout="poupix"] .hero-saudacao { color: var(--blue-bright); }
+html[data-layout="poupix"] .hero-label { color: #a9aed6; }
 html[data-layout="poupix"] .hero-value {
-  background: linear-gradient(180deg, #ffffff, #facc15);
+  background: linear-gradient(180deg, #ffffff, var(--blue-bright));
   -webkit-background-clip: text;
   background-clip: text;
 }
+html[data-layout="poupix"] .btn-ocultar { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); color: #d7dafc; }
 html[data-layout="poupix"] .pill {
   background: rgba(255,255,255,0.08);
   border-color: rgba(255,255,255,0.14);
@@ -508,46 +524,35 @@ html[data-layout="poupix"] .painel {
   box-shadow: 0 2px 14px rgba(18,22,46,0.06);
 }
 html[data-layout="poupix"] .btn-add {
-  background: #facc15;
-  color: #12162e;
+  background: linear-gradient(135deg, var(--blue-bright), var(--blue-deep));
+  color: #fff;
   border-radius: 999px;
-  box-shadow: 0 6px 18px rgba(250,204,21,0.4);
+  box-shadow: 0 6px 18px rgba(59,130,246,0.35);
 }
-html[data-layout="poupix"] .btn-add:hover { box-shadow: 0 10px 24px rgba(250,204,21,0.5); }
 html[data-layout="poupix"] input,
 html[data-layout="poupix"] .select-cat {
   background: #f5f6fb;
   border-color: rgba(18,22,46,0.08);
 }
 html[data-layout="poupix"] .tabs { background: #fff; box-shadow: 0 2px 14px rgba(18,22,46,0.06); }
-html[data-layout="poupix"] .tab-btn.active { background: #12173a; color: #facc15; }
-html[data-layout="poupix"] .meta-barra { background: linear-gradient(90deg, #facc15, #f97316); box-shadow: none; }
+html[data-layout="poupix"] .tab-btn.active { background: #12173a; color: var(--blue-bright); }
+html[data-layout="poupix"] .meta-barra { background: linear-gradient(90deg, var(--blue-bright), var(--cyan)); box-shadow: none; }
 html[data-layout="poupix"] .item { background: #fff; box-shadow: 0 1px 8px rgba(18,22,46,0.05); }
-html[data-layout="poupix"] .topbar {
-  background: #12173a;
-  border-radius: 26px 26px 0 0;
-  padding: 16px 20px 8px;
-  margin-bottom: 0;
-  color: #f4f6fb;
-}
-html[data-layout="poupix"] .btn-tema,
-html[data-layout="poupix"] .btn-perfil-topo {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.16);
-  color: #fff;
-}
-html[data-layout="poupix"] .topbar-date { color: #c7cbe8; }
-html[data-layout="poupix"] .hero {
-  border-radius: 0 0 26px 26px;
-  padding-top: 6px;
-  margin-top: 0;
-}
-html[data-layout="poupix"] .hero-meta-barra-wrap { display: block; }
+html[data-layout="poupix"] .donut-fundo { stroke: #eef0f8 !important; }
+
 .hero-meta-barra-wrap { display: none; margin-top: 16px; padding: 0 8px; }
+html[data-layout="poupix"] .hero-meta-barra-wrap { display: block; }
 .hero-meta-barra-topo { display: flex; justify-content: space-between; font-size: 11px; color: #c7cbe8; margin-bottom: 6px; }
 .hero-meta-barra-fundo { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.12); overflow: hidden; }
-.hero-meta-barra-preenchida { height: 100%; background: linear-gradient(90deg, #facc15, #f97316); border-radius: 999px; transition: width 0.6s cubic-bezier(.4,1.4,.6,1); }
-html[data-layout="poupix"] .donut-fundo { stroke: #eef0f8 !important; }
+.hero-meta-barra-preenchida { height: 100%; background: linear-gradient(90deg, var(--blue-bright), var(--cyan)); border-radius: 999px; transition: width 0.6s cubic-bezier(.4,1.4,.6,1); }
+
+.hero-metas-lista { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.hero-mini-meta { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 9px 12px; }
+.hero-mini-meta-topo { display: flex; justify-content: space-between; font-size: 11.5px; color: #dfe1f7; margin-bottom: 6px; }
+.hero-mini-meta .hero-meta-barra-fundo { height: 6px; }
+
+.meta-completa { opacity: 0.85; }
+.meta-completa .meta-barra { background: linear-gradient(90deg, #facc15, #f97316); }
 
 /* Modal de meta inicial (PoupPix) */
 .meta-inicial-opcao {

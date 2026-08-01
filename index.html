@@ -140,6 +140,7 @@
       <div class="hero-meta-barra-fundo">
         <div class="hero-meta-barra-preenchida" id="heroMetaBarra" style="width:0%"></div>
       </div>
+      <div id="heroMetasLista" class="hero-metas-lista"></div>
     </div>
   </section>
 
@@ -188,7 +189,8 @@
             <!-- opções preenchidas via JS: dia 1 a 31 -->
           </select>
           <label class="campo-label">Por quantos meses repetir?</label>
-          <input type="number" id="quantosMeses" placeholder="Ex: 12" min="1" max="60" value="12">
+          <input type="number" id="quantosMeses" placeholder="Ex: 12" min="1" max="60" value="6">
+          <p class="campo-aviso" id="previewFimRecorrente" style="color:var(--blue-bright);font-weight:600;"></p>
           <p class="campo-aviso">O app já cria todos os lançamentos futuros de uma vez — não precisa voltar aqui todo mês.</p>
         </div>
 
@@ -509,6 +511,16 @@
         <button id="btnConfirmarMetaPersonalizada" class="btn-add" style="width:100%;">Confirmar</button>
       </div>
       <button id="btnPularMetaInicial" class="link-discreto" style="margin-top:12px;">Pular por enquanto</button>
+    </div>
+  </div>
+
+  <!-- Modal de parabéns ao completar meta -->
+  <div class="modal-overlay escondido" id="modalParabensMeta">
+    <div class="modal-card">
+      <div class="modal-icone" style="background:linear-gradient(135deg,#facc15,#f97316);">🏆</div>
+      <h1>Meta concluída!</h1>
+      <p class="modal-explica">Parabéns, você completou <b id="parabensMetaNome" style="color:var(--text);">sua meta</b>! 🎉</p>
+      <button id="btnFecharParabensMeta" class="btn-add" style="width:100%;">Que orgulho!</button>
     </div>
   </div>
 

@@ -871,6 +871,8 @@ async function finalizarLogin(dados) {
       planoAtual = dadosServidor.planoAtual || 'free';
       devAtivo = dadosServidor.devAtivo || false;
       corEscolhida = dadosServidor.corEscolhida || 'azul';
+      corLivreHex = dadosServidor.corLivreHex || '#3b82f6';
+      layoutAtual = dadosServidor.layoutAtual || 'padrao';
       limiteGasto = dadosServidor.limiteGasto ?? null;
       metas = dadosServidor.metas || [];
     }
@@ -1065,7 +1067,7 @@ async function sincronizarComServidor() {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + tokenSessao
       },
-      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo, corEscolhida, limiteGasto, metas })
+      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo, corEscolhida, limiteGasto, metas, corLivreHex, layoutAtual })
     });
   } catch (erro) {
     console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho).', erro);
@@ -1092,7 +1094,19 @@ function preencherDiasRecorrente() {
 
 checkRecorrente.addEventListener('change', () => {
   linhaDiaRecorrente.style.display = checkRecorrente.checked ? 'block' : 'none';
+  atualizarPreviewFimRecorrente();
 });
+
+const previewFimRecorrenteEl = document.getElementById('previewFimRecorrente');
+function atualizarPreviewFimRecorrente() {
+  let qtd = parseInt(quantosMesesSelect.value);
+  if (isNaN(qtd) || qtd < 1) qtd = 1;
+  if (qtd > 60) qtd = 60;
+  const agora = new Date();
+  const fim = new Date(agora.getFullYear(), agora.getMonth() + qtd - 1, 1);
+  previewFimRecorrenteEl.textContent = `Isso vai criar ${qtd} lançamento${qtd > 1 ? 's' : ''}, de ${nomeMes(agora)} até ${nomeMes(fim)}.`;
+}
+quantosMesesSelect.addEventListener('input', atualizarPreviewFimRecorrente);
 
 // --- Abas ---
 const DICAS_ABA = {
@@ -1492,7 +1506,7 @@ btnAddMeta.addEventListener('click', () => {
     return;
   }
 
-  metas.push({ id: Date.now(), nome, valor });
+  metas.push({ id: Date.now(), nome, valor, acumulado: 0, completa: false });
   novaMetaNome.value = '';
   novaMetaValor.value = '';
   metasAvisoLimiteEl.style.display = 'none';
@@ -1512,33 +1526,70 @@ function atualizarMeta() {
     salvar();
   }
 
-  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
-  const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
-  const saldo = Math.max(entradas - saidas, 0);
-
   listaMetasEl.innerHTML = '';
   metasVazioEl.classList.toggle('mostrar', metas.length === 0);
 
+  let precisaSalvar = false;
+
   metas.forEach(meta => {
-    const pct = Math.min((saldo / meta.valor) * 100, 100);
+    if (meta.acumulado === undefined) meta.acumulado = 0;
+    if (meta.completa === undefined) meta.completa = false;
+
+    const pct = Math.min((meta.acumulado / meta.valor) * 100, 100);
+
+    if (meta.acumulado >= meta.valor && !meta.completa) {
+      meta.completa = true;
+      precisaSalvar = true;
+      mostrarParabensMeta(meta);
+    }
+
     const card = document.createElement('div');
-    card.className = 'meta-card';
+    card.className = 'meta-card' + (meta.completa ? ' meta-completa' : '');
     card.innerHTML = `
       <div class="meta-card-topo">
-        <span class="meta-card-nome">${escapeHTML(meta.nome)}</span>
+        <span class="meta-card-nome">${meta.completa ? '🏆 ' : ''}${escapeHTML(meta.nome)}</span>
         <button class="meta-card-del" title="Remover meta">✕</button>
       </div>
-      <div class="meta-card-valores">${formatarMoeda(saldo)} de <b>${formatarMoeda(meta.valor)}</b></div>
+      <div class="meta-card-valores">${formatarMoeda(meta.acumulado)} de <b>${formatarMoeda(meta.valor)}</b></div>
       <div class="meta-barra-fundo">
         <div class="meta-barra" style="width:${pct}%"></div>
       </div>
+      ${!meta.completa ? '<button class="btn-ghost-sm btn-guardar-meta" style="margin-top:10px;">+ Guardar dinheiro</button>' : ''}
     `;
     card.querySelector('.meta-card-del').addEventListener('click', () => removerMeta(meta.id));
+    const btnGuardar = card.querySelector('.btn-guardar-meta');
+    if (btnGuardar) btnGuardar.addEventListener('click', () => guardarNaMeta(meta.id));
     listaMetasEl.appendChild(card);
   });
 
+  if (precisaSalvar) salvar();
+
   btnAddMeta.style.display = (!temRecurso('ultimate') && metas.length >= 1) ? 'none' : 'inline-block';
 }
+
+function guardarNaMeta(id) {
+  const meta = metas.find(m => m.id === id);
+  if (!meta) return;
+  const valor = parseFloat(prompt(`Quanto você quer guardar em "${meta.nome}"?`));
+  if (isNaN(valor) || valor <= 0) return;
+  meta.acumulado = (meta.acumulado || 0) + valor;
+  salvar();
+  atualizarMeta();
+  atualizarBarraHeroMeta();
+}
+
+// --- Modal de parabéns ao completar meta ---
+const modalParabensMeta = document.getElementById('modalParabensMeta');
+const parabensMetaNome = document.getElementById('parabensMetaNome');
+
+function mostrarParabensMeta(meta) {
+  parabensMetaNome.textContent = meta.nome;
+  modalParabensMeta.classList.remove('escondido');
+}
+
+document.getElementById('btnFecharParabensMeta').addEventListener('click', () => {
+  modalParabensMeta.classList.add('escondido');
+});
 
 // --- Maiores lançamentos do mês atual ---
 function montarTopLista(tipo, containerEl, vazioEl) {
@@ -1685,17 +1736,28 @@ const heroMetaBarraWrap = document.getElementById('heroMetaBarraWrap');
 const heroMetaNome = document.getElementById('heroMetaNome');
 const heroMetaPct = document.getElementById('heroMetaPct');
 const heroMetaBarra = document.getElementById('heroMetaBarra');
+const heroMetasListaEl = document.getElementById('heroMetasLista');
 
 function atualizarBarraHeroMeta() {
-  if (metas.length === 0) { heroMetaBarraWrap.style.display = 'none'; return; }
+  if (metas.length === 0) { heroMetaBarraWrap.style.display = 'none'; heroMetasListaEl.innerHTML = ''; return; }
   const meta = metas[0];
-  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
-  const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
-  const saldo = Math.max(entradas - saidas, 0);
-  const pct = Math.min((saldo / meta.valor) * 100, 100);
+  const pct = Math.min(((meta.acumulado || 0) / meta.valor) * 100, 100);
   heroMetaNome.textContent = meta.nome;
   heroMetaPct.textContent = pct.toFixed(0) + '%';
   heroMetaBarra.style.width = pct + '%';
+
+  heroMetasListaEl.innerHTML = metas.map(m => {
+    const p = Math.min(((m.acumulado || 0) / m.valor) * 100, 100);
+    return `
+      <div class="hero-mini-meta">
+        <div class="hero-mini-meta-topo">
+          <span>${m.completa ? '🏆 ' : ''}${escapeHTML(m.nome)}</span>
+          <span>${p.toFixed(0)}%</span>
+        </div>
+        <div class="hero-meta-barra-fundo"><div class="hero-meta-barra-preenchida" style="width:${p}%"></div></div>
+      </div>
+    `;
+  }).join('');
 }
 
 // --- Modal de meta inicial (PoupPix) ---
@@ -1711,7 +1773,7 @@ function verificarMetaInicialPoupix() {
 }
 
 function criarMetaInicial(valor) {
-  metas.push({ id: Date.now(), nome: 'Minha meta', valor });
+  metas.push({ id: Date.now(), nome: 'Minha meta', valor, acumulado: 0, completa: false });
   localStorage.setItem(CHAVE_META_INICIAL_VISTA, '1');
   salvar();
   atualizarMeta();
@@ -1807,6 +1869,8 @@ async function buscarDadosServidorAoAbrir() {
       planoAtual = dadosServidor.planoAtual || 'free';
       devAtivo = dadosServidor.devAtivo || false;
       corEscolhida = dadosServidor.corEscolhida || 'azul';
+      corLivreHex = dadosServidor.corLivreHex || '#3b82f6';
+      layoutAtual = dadosServidor.layoutAtual || 'padrao';
       limiteGasto = dadosServidor.limiteGasto ?? null;
       metas = dadosServidor.metas || [];
       salvar();
