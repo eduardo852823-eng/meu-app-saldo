@@ -53,7 +53,7 @@ const usuarioSchema = new mongoose.Schema({
   foto: String,
   corEscolhida: { type: String, default: 'azul' },
   corLivreHex: { type: String, default: '#3b82f6' },
-  layoutAtual: { type: String, default: 'padrao' },
+  layoutAtual: { type: String, default: 'poupix' },
   planoAtual: { type: String, default: 'free' },
   devAtivo: { type: Boolean, default: false },
   limiteGasto: { type: Number, default: null },

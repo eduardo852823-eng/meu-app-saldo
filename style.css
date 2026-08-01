@@ -1663,6 +1663,7 @@ html[data-cor="rgb"] {
   margin-bottom: 6px;
 }
 
+/* Tutorial: letras brilhando */
 .tour-balao-texto {
   font-size: 13px;
   color: var(--text);
@@ -1670,6 +1671,87 @@ html[data-cor="rgb"] {
   line-height: 1.55;
   margin-bottom: 12px;
 }
+@keyframes brilharTexto {
+  0%, 100% { text-shadow: 0 0 6px rgba(96,165,250,0.15); }
+  50% { text-shadow: 0 0 14px rgba(96,165,250,0.7), 0 0 22px rgba(96,165,250,0.35); }
+}
+.tour-balao-titulo {
+  animation: brilharTexto 2.2s ease-in-out infinite;
+}
+.tour-balao-texto {
+  animation: brilharTexto 2.2s ease-in-out infinite;
+  animation-delay: 0.3s;
+}
+
+/* Lista de meses não se estende muito */
+#blocosMeses {
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+#blocosMeses::-webkit-scrollbar { width: 5px; }
+#blocosMeses::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
+
+/* Item pendente (agendado, ainda não conta no saldo) */
+.item.pendente { opacity: 0.55; }
+.item-tag-pendente { color: var(--blue-bright) !important; border-color: var(--blue-bright) !important; }
+
+/* Status do mês (ainda lançando) */
+.mes-card-status {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--blue-bright);
+  background: rgba(59,130,246,0.1);
+  border-radius: 8px;
+  padding: 6px 9px;
+}
+
+/* Botões de ação da meta lado a lado */
+.meta-card-acoes {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.meta-card-acoes .btn-ghost-sm { flex: 1; }
+
+/* PoupPix no modo escuro (segue o tema claro/escuro do app) */
+html[data-layout="poupix"][data-tema="escuro"] {
+  --bg: #05070d;
+  --bg-soft: #0b0f1a;
+  --panel: #0e1420;
+  --panel-2: #121a2b;
+  --text: #e8edf7;
+  --text-dim: #7b87a3;
+  --line: rgba(120,160,255,0.12);
+  color-scheme: dark;
+}
+html[data-layout="poupix"][data-tema="escuro"] .topbar,
+html[data-layout="poupix"][data-tema="escuro"] .hero { background: #0a0e22; }
+html[data-layout="poupix"][data-tema="escuro"] .painel { box-shadow: none; border: 1px solid var(--line); }
+html[data-layout="poupix"][data-tema="escuro"] .item { background: var(--panel-2); box-shadow: none; }
+html[data-layout="poupix"][data-tema="escuro"] .tabs { background: var(--panel); box-shadow: none; }
+html[data-layout="poupix"][data-tema="escuro"] input,
+html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--panel-2); }
+
+/* Animações gerais de estilo */
+.meta-card, .item, .top-item, .mes-card, .cor-opcao {
+  animation: fadeUp 0.35s ease both;
+}
+.btn-add {
+  position: relative;
+  overflow: hidden;
+}
+.btn-add::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform: translateX(-120%);
+  transition: transform 0.5s ease;
+}
+.btn-add:hover::after { transform: translateX(120%); }
+.hero-mini-meta, .meta-card { transition: transform 0.15s ease; }
+.hero-mini-meta:hover, .meta-card:hover { transform: translateY(-2px); }
 
 .tour-balao-nav {
   display: flex;

@@ -18,7 +18,7 @@ let tokenSessao = '';
 let criadoEm = '';
 let corEscolhida = 'azul';
 let corLivreHex = '#3b82f6';
-let layoutAtual = 'padrao';
+let layoutAtual = 'poupix';
 
 // --- Chaves de armazenamento ---
 const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
@@ -71,6 +71,8 @@ const novaMetaNome = document.getElementById('novaMetaNome');
 const novaMetaValor = document.getElementById('novaMetaValor');
 const btnAddMeta = document.getElementById('btnAddMeta');
 const metasAvisoLimiteEl = document.getElementById('metasAvisoLimite');
+const metasConcluidasSecao = document.getElementById('metasConcluidasSecao');
+const listaMetasConcluidasEl = document.getElementById('listaMetasConcluidas');
 const graficoSaidaEl = document.getElementById('topGastos');
 const graficoSaidaVazioEl = document.getElementById('topGastosVazio');
 const graficoEntradaEl = document.getElementById('topEntradas');
@@ -372,6 +374,19 @@ const iconeSol = document.getElementById('iconeSol');
 const themeColorMeta = document.getElementById('themeColorMeta');
 let nomeUsuario = '';
 
+// --- Verifica se um lançamento ainda não chegou na data (agendado) ---
+function itemPendente(item) {
+  const agora = new Date();
+  agora.setHours(0, 0, 0, 0);
+  const dataItem = new Date(item.data);
+  dataItem.setHours(0, 0, 0, 0);
+  return dataItem > agora;
+}
+
+function lancamentosAtivos() {
+  return lancamentos.filter(l => !itemPendente(l));
+}
+
 // --- Persistência (localStorage, funciona offline, sem precisar de servidor/domínio) ---
 function salvar() {
   try {
@@ -425,7 +440,7 @@ function carregar() {
     criadoEm = localStorage.getItem(CHAVE_CRIADOEM) || '';
     corEscolhida = localStorage.getItem(CHAVE_COR) || 'azul';
     corLivreHex = localStorage.getItem(CHAVE_COR_HEX) || '#3b82f6';
-    layoutAtual = localStorage.getItem(CHAVE_LAYOUT) || 'padrao';
+    layoutAtual = localStorage.getItem(CHAVE_LAYOUT) || 'poupix';
   } catch (e) {
     console.warn('Não foi possível carregar os dados salvos.', e);
     lancamentos = [];
@@ -746,7 +761,7 @@ btnSalvarLimite.addEventListener('click', () => {
 function atualizarAvisoLimite() {
   if (!limiteGasto) { limiteAvisoEl.textContent = ''; return; }
   const chaveAtual = chaveMes(new Date());
-  const gastoMes = lancamentos
+  const gastoMes = lancamentosAtivos()
     .filter(l => l.tipo === 'saida' && chaveMes(l.data) === chaveAtual)
     .reduce((s, l) => s + l.valor, 0);
 
@@ -872,7 +887,7 @@ async function finalizarLogin(dados) {
       devAtivo = dadosServidor.devAtivo || false;
       corEscolhida = dadosServidor.corEscolhida || 'azul';
       corLivreHex = dadosServidor.corLivreHex || '#3b82f6';
-      layoutAtual = dadosServidor.layoutAtual || 'padrao';
+      layoutAtual = dadosServidor.layoutAtual || 'poupix';
       limiteGasto = dadosServidor.limiteGasto ?? null;
       metas = dadosServidor.metas || [];
     }
@@ -1390,7 +1405,8 @@ function renderizarTudo() {
 // --- Criar elemento de item ---
 function criarItemEl(item) {
   const li = document.createElement('li');
-  li.className = `item ${item.tipo}`;
+  const pendente = itemPendente(item);
+  li.className = `item ${item.tipo}${pendente ? ' pendente' : ''}`;
   li.dataset.id = item.id;
 
   const cat = item.categoria ? CATEGORIAS[item.categoria] : null;
@@ -1399,13 +1415,14 @@ function criarItemEl(item) {
   const dataFormatada = item.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const tagRecorrente = item.recorrente ? `<span class="item-cat-tag">🔁 Fixo${item.diaRecorrente ? ' (dia ' + item.diaRecorrente + ')' : ''}</span>` : '';
   const tagCat = cat ? `<span class="item-cat-tag">${cat.nome}</span>` : '';
+  const tagPendente = pendente ? `<span class="item-cat-tag item-tag-pendente">🕒 Agendado</span>` : '';
 
   li.innerHTML = `
     <div class="item-icone">${icone}</div>
     <div class="item-info">
       <div class="item-desc">${escapeHTML(item.descricao)}</div>
       <div class="item-data">${dataFormatada}</div>
-      ${tagCat}${tagRecorrente}
+      ${tagCat}${tagRecorrente}${tagPendente}
     </div>
     <div class="item-valor">${sinal} ${formatarMoeda(item.valor)}</div>
   `;
@@ -1475,8 +1492,9 @@ function removerItem(id, elemento) {
 
 // --- Resumo (saldo, entradas, saídas) ---
 function atualizarResumo(pulsar) {
-  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
-  const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+  const ativos = lancamentosAtivos();
+  const entradas = ativos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+  const saidas = ativos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
   const saldo = entradas - saidas;
 
   totalEntradasEl.textContent = formatarMoeda(entradas);
@@ -1527,39 +1545,63 @@ function atualizarMeta() {
   }
 
   listaMetasEl.innerHTML = '';
-  metasVazioEl.classList.toggle('mostrar', metas.length === 0);
+  listaMetasConcluidasEl.innerHTML = '';
 
   let precisaSalvar = false;
 
   metas.forEach(meta => {
     if (meta.acumulado === undefined) meta.acumulado = 0;
     if (meta.completa === undefined) meta.completa = false;
-
-    const pct = Math.min((meta.acumulado / meta.valor) * 100, 100);
-
     if (meta.acumulado >= meta.valor && !meta.completa) {
       meta.completa = true;
       precisaSalvar = true;
       mostrarParabensMeta(meta);
     }
+  });
 
+  const ativas = metas.filter(m => !m.completa);
+  const concluidas = metas.filter(m => m.completa);
+
+  metasVazioEl.classList.toggle('mostrar', ativas.length === 0);
+
+  ativas.forEach(meta => {
+    const pct = Math.min((meta.acumulado / meta.valor) * 100, 100);
     const card = document.createElement('div');
-    card.className = 'meta-card' + (meta.completa ? ' meta-completa' : '');
+    card.className = 'meta-card';
     card.innerHTML = `
       <div class="meta-card-topo">
-        <span class="meta-card-nome">${meta.completa ? '🏆 ' : ''}${escapeHTML(meta.nome)}</span>
+        <span class="meta-card-nome">${escapeHTML(meta.nome)}</span>
         <button class="meta-card-del" title="Remover meta">✕</button>
       </div>
       <div class="meta-card-valores">${formatarMoeda(meta.acumulado)} de <b>${formatarMoeda(meta.valor)}</b></div>
       <div class="meta-barra-fundo">
         <div class="meta-barra" style="width:${pct}%"></div>
       </div>
-      ${!meta.completa ? '<button class="btn-ghost-sm btn-guardar-meta" style="margin-top:10px;">+ Guardar dinheiro</button>' : ''}
+      <div class="meta-card-acoes">
+        <button class="btn-ghost-sm btn-guardar-meta">+ Guardar</button>
+        ${meta.acumulado > 0 ? '<button class="btn-ghost-sm btn-retirar-meta">− Retirar</button>' : ''}
+      </div>
     `;
     card.querySelector('.meta-card-del').addEventListener('click', () => removerMeta(meta.id));
-    const btnGuardar = card.querySelector('.btn-guardar-meta');
-    if (btnGuardar) btnGuardar.addEventListener('click', () => guardarNaMeta(meta.id));
+    card.querySelector('.btn-guardar-meta').addEventListener('click', () => guardarNaMeta(meta.id));
+    const btnRetirar = card.querySelector('.btn-retirar-meta');
+    if (btnRetirar) btnRetirar.addEventListener('click', () => retirarDaMeta(meta.id));
     listaMetasEl.appendChild(card);
+  });
+
+  metasConcluidasSecao.style.display = concluidas.length > 0 ? 'block' : 'none';
+  concluidas.forEach(meta => {
+    const card = document.createElement('div');
+    card.className = 'meta-card meta-completa';
+    card.innerHTML = `
+      <div class="meta-card-topo">
+        <span class="meta-card-nome">🏆 ${escapeHTML(meta.nome)}</span>
+        <button class="meta-card-del" title="Remover meta">✕</button>
+      </div>
+      <div class="meta-card-valores">${formatarMoeda(meta.valor)} concluída</div>
+    `;
+    card.querySelector('.meta-card-del').addEventListener('click', () => removerMeta(meta.id));
+    listaMetasConcluidasEl.appendChild(card);
   });
 
   if (precisaSalvar) salvar();
@@ -1570,12 +1612,42 @@ function atualizarMeta() {
 function guardarNaMeta(id) {
   const meta = metas.find(m => m.id === id);
   if (!meta) return;
-  const valor = parseFloat(prompt(`Quanto você quer guardar em "${meta.nome}"?`));
+  const valor = parseFloat(prompt(`Quanto você quer guardar em "${meta.nome}"? (isso vai sair do seu saldo)`));
   if (isNaN(valor) || valor <= 0) return;
   meta.acumulado = (meta.acumulado || 0) + valor;
+  lancamentos.unshift({
+    id: Date.now(),
+    descricao: `Guardado para: ${meta.nome}`,
+    valor,
+    tipo: 'saida',
+    categoria: '',
+    recorrente: false,
+    diaRecorrente: null,
+    data: new Date()
+  });
   salvar();
-  atualizarMeta();
-  atualizarBarraHeroMeta();
+  renderizarTudo();
+}
+
+function retirarDaMeta(id) {
+  const meta = metas.find(m => m.id === id);
+  if (!meta) return;
+  const valor = parseFloat(prompt(`Quanto você quer retirar de "${meta.nome}"? (máximo ${formatarMoeda(meta.acumulado)})`));
+  if (isNaN(valor) || valor <= 0) return;
+  const valorReal = Math.min(valor, meta.acumulado);
+  meta.acumulado -= valorReal;
+  lancamentos.unshift({
+    id: Date.now(),
+    descricao: `Retirado de: ${meta.nome}`,
+    valor: valorReal,
+    tipo: 'entrada',
+    categoria: '',
+    recorrente: false,
+    diaRecorrente: null,
+    data: new Date()
+  });
+  salvar();
+  renderizarTudo();
 }
 
 // --- Modal de parabéns ao completar meta ---
@@ -1594,7 +1666,7 @@ document.getElementById('btnFecharParabensMeta').addEventListener('click', () =>
 // --- Maiores lançamentos do mês atual ---
 function montarTopLista(tipo, containerEl, vazioEl) {
   const chaveAtual = chaveMes(new Date());
-  const itens = lancamentos
+  const itens = lancamentosAtivos()
     .filter(l => l.tipo === tipo && chaveMes(l.data) === chaveAtual)
     .sort((a, b) => b.valor - a.valor)
     .slice(0, 5);
@@ -1628,7 +1700,8 @@ function atualizarResumoMeses() {
   const grupos = {};
   lancamentos.forEach(l => {
     const chave = chaveMes(l.data);
-    if (!grupos[chave]) grupos[chave] = { entradas: 0, saidas: 0, data: l.data };
+    if (!grupos[chave]) grupos[chave] = { entradas: 0, saidas: 0, data: l.data, pendentes: 0 };
+    if (itemPendente(l)) { grupos[chave].pendentes++; return; }
     if (l.tipo === 'entrada') grupos[chave].entradas += l.valor;
     else grupos[chave].saidas += l.valor;
   });
@@ -1639,7 +1712,7 @@ function atualizarResumoMeses() {
   resumoMesesVazioEl.classList.toggle('mostrar', chaves.length === 0);
 
   chaves.forEach(chave => {
-    const { entradas, saidas, data } = grupos[chave];
+    const { entradas, saidas, data, pendentes } = grupos[chave];
     const saldo = entradas - saidas;
     const total = entradas + saidas;
     const pctIn = total ? (entradas / total) * 100 : 0;
@@ -1650,6 +1723,10 @@ function atualizarResumoMeses() {
     let seloTexto = 'Neutro';
     if (saldo > 0) { classeSaldo = 'positivo'; selo = 'lucro'; seloTexto = 'Lucro'; }
     else if (saldo < 0) { classeSaldo = 'negativo'; selo = 'prejuizo'; seloTexto = 'Prejuízo'; }
+
+    const statusPendente = pendentes > 0
+      ? `<div class="mes-card-status pendente">🕒 Ainda tem ${pendentes} lançamento${pendentes > 1 ? 's' : ''} fixo${pendentes > 1 ? 's' : ''} agendado${pendentes > 1 ? 's' : ''}</div>`
+      : '';
 
     const card = document.createElement('div');
     card.className = 'mes-card';
@@ -1667,6 +1744,7 @@ function atualizarResumoMeses() {
         <span class="mes-card-selo ${selo}">${seloTexto}</span>
         <span>Saiu <b>${formatarMoeda(saidas)}</b></span>
       </div>
+      ${statusPendente}
     `;
     resumoMesesEl.appendChild(card);
   });
@@ -1681,7 +1759,7 @@ const donutVazioEl = document.getElementById('donutVazio');
 
 function atualizarDonut() {
   const chaveAtual = chaveMes(new Date());
-  const doMes = lancamentos.filter(l => l.tipo === 'saida' && chaveMes(l.data) === chaveAtual);
+  const doMes = lancamentosAtivos().filter(l => l.tipo === 'saida' && chaveMes(l.data) === chaveAtual);
 
   const grupos = {};
   doMes.forEach(l => {
@@ -1808,7 +1886,7 @@ function atualizarComparacao() {
   const chaveAnterior = chaveMes(mesPassado);
 
   function totaisDoMes(chave) {
-    const itens = lancamentos.filter(l => chaveMes(l.data) === chave);
+    const itens = lancamentosAtivos().filter(l => chaveMes(l.data) === chave);
     const saidas = itens.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
     const entradas = itens.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
     return { saidas, entradas };
@@ -1870,7 +1948,7 @@ async function buscarDadosServidorAoAbrir() {
       devAtivo = dadosServidor.devAtivo || false;
       corEscolhida = dadosServidor.corEscolhida || 'azul';
       corLivreHex = dadosServidor.corLivreHex || '#3b82f6';
-      layoutAtual = dadosServidor.layoutAtual || 'padrao';
+      layoutAtual = dadosServidor.layoutAtual || 'poupix';
       limiteGasto = dadosServidor.limiteGasto ?? null;
       metas = dadosServidor.metas || [];
       salvar();
