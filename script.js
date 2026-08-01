@@ -301,7 +301,7 @@ coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
   });
 });
 const layoutGradeEl = document.getElementById('layoutGrade');
-const nivelLayout = { padrao: 'free', minimo: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
+const nivelLayout = { padrao: 'free', poupix: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
 
 function renderizarGradeLayout() {
   layoutGradeEl.querySelectorAll('.layout-opcao').forEach(btn => {
@@ -456,11 +456,12 @@ function aplicarGating() {
   }
   aplicarCor(corEscolhida);
 
-  const nivelLayout = { padrao: 'free', minimo: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
+  const nivelLayout = { padrao: 'free', poupix: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
   if (!temRecurso(nivelLayout[layoutAtual] || 'ultimate')) {
     layoutAtual = 'padrao';
   }
   document.documentElement.setAttribute('data-layout', layoutAtual);
+  verificarMetaInicialPoupix();
 
   if (!temRecurso('ultimate') && metas.length > 1) {
     metas = metas.slice(0, 1);
@@ -1364,7 +1365,9 @@ function renderizarTudo() {
   vazio.classList.toggle('mostrar', lancamentos.length === 0);
   atualizarResumo(false);
   atualizarMeta();
+  atualizarBarraHeroMeta();
   atualizarGrafico();
+  atualizarDonut();
   atualizarComparacao();
   atualizarResumoMeses();
   atualizarAvisoLimite();
@@ -1617,6 +1620,123 @@ function atualizarResumoMeses() {
     resumoMesesEl.appendChild(card);
   });
 }
+
+// --- Gráfico de rosca: distribuição de gastos por categoria (mês atual) ---
+const CORES_DONUT = ['#60a5fa', '#f97316', '#34d399', '#f472b6', '#a78bfa', '#facc15', '#f87171', '#22d3ee'];
+const donutSvg = document.getElementById('donutSvg');
+const donutTotalEl = document.getElementById('donutTotal');
+const donutLegendaEl = document.getElementById('donutLegenda');
+const donutVazioEl = document.getElementById('donutVazio');
+
+function atualizarDonut() {
+  const chaveAtual = chaveMes(new Date());
+  const doMes = lancamentos.filter(l => l.tipo === 'saida' && chaveMes(l.data) === chaveAtual);
+
+  const grupos = {};
+  doMes.forEach(l => {
+    const nome = (l.categoria && CATEGORIAS[l.categoria]) ? CATEGORIAS[l.categoria].nome : 'Outros';
+    grupos[nome] = (grupos[nome] || 0) + l.valor;
+  });
+
+  const total = doMes.reduce((s, l) => s + l.valor, 0);
+  const entradas = Object.entries(grupos).sort((a, b) => b[1] - a[1]);
+
+  donutVazioEl.classList.toggle('mostrar', total === 0);
+  donutTotalEl.textContent = formatarMoeda(total);
+
+  if (total === 0) {
+    donutSvg.innerHTML = '';
+    donutLegendaEl.innerHTML = '';
+    return;
+  }
+
+  const raio = 50, cx = 60, cy = 60, largura = 16;
+  const circ = 2 * Math.PI * raio;
+  let acumulado = 0;
+  let svg = `<circle class="donut-fundo" cx="${cx}" cy="${cy}" r="${raio}" fill="none" stroke="var(--panel-2)" stroke-width="${largura}"/>`;
+
+  entradas.forEach(([nome, valor], i) => {
+    const pct = valor / total;
+    const tamanho = pct * circ;
+    const cor = CORES_DONUT[i % CORES_DONUT.length];
+    svg += `<circle class="donut-fatia" cx="${cx}" cy="${cy}" r="${raio}" fill="none" stroke="${cor}" stroke-width="${largura}"
+      stroke-dasharray="${tamanho} ${circ - tamanho}" stroke-dashoffset="${-acumulado}"
+      transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt"/>`;
+    acumulado += tamanho;
+  });
+
+  donutSvg.innerHTML = svg;
+
+  donutLegendaEl.innerHTML = entradas.map(([nome, valor], i) => {
+    const pct = ((valor / total) * 100).toFixed(0);
+    const cor = CORES_DONUT[i % CORES_DONUT.length];
+    return `
+      <div class="donut-legenda-item">
+        <span class="donut-legenda-dot" style="background:${cor}"></span>
+        <span class="donut-legenda-nome">${escapeHTML(nome)}</span>
+        <span class="donut-legenda-pct">${pct}% · ${formatarMoeda(valor)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// --- Barra de meta no topo (layout PoupPix) ---
+const heroMetaBarraWrap = document.getElementById('heroMetaBarraWrap');
+const heroMetaNome = document.getElementById('heroMetaNome');
+const heroMetaPct = document.getElementById('heroMetaPct');
+const heroMetaBarra = document.getElementById('heroMetaBarra');
+
+function atualizarBarraHeroMeta() {
+  if (metas.length === 0) { heroMetaBarraWrap.style.display = 'none'; return; }
+  const meta = metas[0];
+  const entradas = lancamentos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+  const saidas = lancamentos.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+  const saldo = Math.max(entradas - saidas, 0);
+  const pct = Math.min((saldo / meta.valor) * 100, 100);
+  heroMetaNome.textContent = meta.nome;
+  heroMetaPct.textContent = pct.toFixed(0) + '%';
+  heroMetaBarra.style.width = pct + '%';
+}
+
+// --- Modal de meta inicial (PoupPix) ---
+const modalMetaInicial = document.getElementById('modalMetaInicial');
+const metaPersonalizadaCampo = document.getElementById('metaPersonalizadaCampo');
+const CHAVE_META_INICIAL_VISTA = 'saldo_meta_inicial_vista';
+
+function verificarMetaInicialPoupix() {
+  if (layoutAtual !== 'poupix') return;
+  if (metas.length > 0) return;
+  if (localStorage.getItem(CHAVE_META_INICIAL_VISTA) === '1') return;
+  modalMetaInicial.classList.remove('escondido');
+}
+
+function criarMetaInicial(valor) {
+  metas.push({ id: Date.now(), nome: 'Minha meta', valor });
+  localStorage.setItem(CHAVE_META_INICIAL_VISTA, '1');
+  salvar();
+  atualizarMeta();
+  atualizarBarraHeroMeta();
+  modalMetaInicial.classList.add('escondido');
+}
+
+document.querySelectorAll('.meta-inicial-opcao[data-valor]').forEach(btn => {
+  btn.addEventListener('click', () => criarMetaInicial(parseFloat(btn.dataset.valor)));
+});
+
+document.getElementById('btnMetaPersonalizada').addEventListener('click', () => {
+  metaPersonalizadaCampo.style.display = 'block';
+});
+
+document.getElementById('btnConfirmarMetaPersonalizada').addEventListener('click', () => {
+  const valor = parseFloat(document.getElementById('metaPersonalizadaValor').value);
+  if (isNaN(valor) || valor <= 0) { alert('Digita um valor válido.'); return; }
+  criarMetaInicial(valor);
+});
+
+document.getElementById('btnPularMetaInicial').addEventListener('click', () => {
+  localStorage.setItem(CHAVE_META_INICIAL_VISTA, '1');
+  modalMetaInicial.classList.add('escondido');
+});
 
 // --- Comparação com o mês anterior ---
 function atualizarComparacao() {

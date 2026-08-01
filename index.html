@@ -132,6 +132,15 @@
         <span>Saídas <b id="totalSaidas">R$ 0,00</b></span>
       </div>
     </div>
+    <div class="hero-meta-barra-wrap" id="heroMetaBarraWrap">
+      <div class="hero-meta-barra-topo">
+        <span id="heroMetaNome">Sua meta</span>
+        <span id="heroMetaPct">0%</span>
+      </div>
+      <div class="hero-meta-barra-fundo">
+        <div class="hero-meta-barra-preenchida" id="heroMetaBarra" style="width:0%"></div>
+      </div>
+    </div>
   </section>
 
   <nav class="tabs">
@@ -239,6 +248,23 @@
 
   <!-- ABA ANÁLISE -->
   <section class="tab-conteudo" id="tab-analise">
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom:14px;">
+        <span>Distribuição de gastos</span>
+      </div>
+      <div class="donut-wrap">
+        <svg id="donutSvg" viewBox="0 0 120 120" width="140" height="140"></svg>
+        <div class="donut-centro">
+          <div class="donut-centro-label">Este mês</div>
+          <div class="donut-centro-valor" id="donutTotal">R$ 0,00</div>
+        </div>
+      </div>
+      <div id="donutLegenda" class="donut-legenda"></div>
+      <div id="donutVazio" class="vazio vazio-mini">
+        <span>Sem gastos registrados este mês ainda.</span>
+      </div>
+    </section>
 
     <section class="painel meta-painel">
       <div class="lista-header" style="margin-bottom:12px;">
@@ -361,7 +387,7 @@
           <p class="config-fs-explica" style="margin-top:24px;">Escolha como a lista de lançamentos aparece.</p>
           <div class="cores-grade" id="layoutGrade">
             <button class="cor-opcao layout-opcao" data-layout="padrao" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">📋</span>Padrão</button>
-            <button class="cor-opcao layout-opcao" data-layout="minimo" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">▫️</span>Mínimo</button>
+            <button class="cor-opcao layout-opcao" data-layout="poupix" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">🐷</span>PoupPix</button>
             <button class="cor-opcao layout-opcao" data-layout="compacto" data-nivel="pro"><span style="background:none;box-shadow:none;font-size:20px;">📃</span>Compacto</button>
             <button class="cor-opcao layout-opcao" data-layout="moderno" data-nivel="pro"><span style="background:none;box-shadow:none;font-size:20px;">✨</span>Moderno</button>
             <button class="cor-opcao layout-opcao" data-layout="cards" data-nivel="ultimate"><span style="background:none;box-shadow:none;font-size:20px;">🗂️</span>Cards</button>
@@ -465,6 +491,24 @@
       <button id="btnAcaoEditar" class="btn-add" style="width:100%;margin-bottom:10px;">✎ Editar</button>
       <button id="btnAcaoExcluir" class="btn-add" style="width:100%;background:linear-gradient(135deg,#f87171,#b91c1c);box-shadow:0 4px 16px rgba(248,113,113,0.35);margin-bottom:10px;">✕ Excluir</button>
       <button id="btnAcaoCancelar" class="link-discreto">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal de meta inicial (PoupPix) -->
+  <div class="modal-overlay escondido" id="modalMetaInicial">
+    <div class="modal-card" style="max-width:320px;">
+      <div class="modal-icone" style="background:linear-gradient(135deg,#facc15,#f97316);">🐷</div>
+      <h1>Qual é a sua meta?</h1>
+      <p class="modal-explica">Escolha quanto você quer juntar. Dá pra mudar depois.</p>
+      <button class="meta-inicial-opcao" data-valor="500"><b>R$ 500</b><span>Pra começar devagar</span></button>
+      <button class="meta-inicial-opcao" data-valor="1000"><b>R$ 1.000</b><span>Uma meta sólida</span></button>
+      <button class="meta-inicial-opcao" data-valor="5000"><b>R$ 5.000</b><span>Meta grande</span></button>
+      <button class="meta-inicial-opcao" id="btnMetaPersonalizada"><b>Meta personalizada</b><span>Escolher outro valor</span></button>
+      <div id="metaPersonalizadaCampo" style="display:none;margin-top:10px;">
+        <input type="number" id="metaPersonalizadaValor" placeholder="Valor R$" min="1" style="width:100%;margin-bottom:8px;">
+        <button id="btnConfirmarMetaPersonalizada" class="btn-add" style="width:100%;">Confirmar</button>
+      </div>
+      <button id="btnPularMetaInicial" class="link-discreto" style="margin-top:12px;">Pular por enquanto</button>
     </div>
   </div>
 
