@@ -17,6 +17,7 @@ let limiteGasto = null;
 let tokenSessao = '';
 let criadoEm = '';
 let corEscolhida = 'azul';
+let corLivreHex = '#3b82f6';
 
 // --- Chaves de armazenamento ---
 const CHAVE_LANCAMENTOS = 'saldo_lancamentos';
@@ -32,6 +33,7 @@ const CHAVE_FOTO = 'saldo_foto';
 const CHAVE_LIMITE = 'saldo_limite';
 const CHAVE_CRIADOEM = 'saldo_criadoem';
 const CHAVE_COR = 'saldo_cor';
+const CHAVE_COR_HEX = 'saldo_cor_hex';
 const CHAVE_TUTORIAL_VISTO = 'saldo_tutorial_visto';
 const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
@@ -242,21 +244,47 @@ document.getElementById('btnReverTutorial').addEventListener('click', () => {
 });
 
 // --- Personalização de cores (Ultimate) ---
+function ajustarBrilhoHex(hex, qtd) {
+  const num = parseInt(hex.replace('#', ''), 16);
+  let r = (num >> 16) + qtd;
+  let g = ((num >> 8) & 0x00FF) + qtd;
+  let b = (num & 0x0000FF) + qtd;
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+  return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+}
+
 function aplicarCor(cor) {
-  document.documentElement.setAttribute('data-cor', cor);
+  if (cor === 'livre') {
+    document.documentElement.removeAttribute('data-cor');
+    const raiz = document.documentElement.style;
+    raiz.setProperty('--blue', corLivreHex);
+    raiz.setProperty('--blue-bright', ajustarBrilhoHex(corLivreHex, 35));
+    raiz.setProperty('--blue-deep', ajustarBrilhoHex(corLivreHex, -35));
+    raiz.setProperty('--cyan', ajustarBrilhoHex(corLivreHex, 55));
+  } else {
+    ['--blue', '--blue-bright', '--blue-deep', '--cyan'].forEach(v => document.documentElement.style.removeProperty(v));
+    document.documentElement.setAttribute('data-cor', cor);
+  }
+  const amostra = document.getElementById('amostraCorLivre');
+  if (amostra) amostra.style.setProperty('--amostra', corLivreHex);
 }
 
 function renderizarGradeCores() {
-  coresGradeEl.querySelectorAll('.cor-opcao').forEach(btn => {
+  coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
     const cor = btn.dataset.cor;
     const nivel = btn.dataset.nivel;
     const liberado = temRecurso(nivel);
     btn.classList.toggle('ativa', cor === corEscolhida);
     btn.classList.toggle('bloqueada', !liberado);
   });
+  corLivreLabel.classList.toggle('ativa', corEscolhida === 'livre');
+  corLivreLabel.classList.toggle('bloqueada', !temRecurso('ultimate'));
+  corLivreInput.value = corLivreHex;
 }
 
-coresGradeEl.querySelectorAll('.cor-opcao').forEach(btn => {
+coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
   btn.addEventListener('click', () => {
     const cor = btn.dataset.cor;
     const nivel = btn.dataset.nivel;
@@ -270,6 +298,23 @@ coresGradeEl.querySelectorAll('.cor-opcao').forEach(btn => {
     renderizarGradeCores();
   });
 });
+const corLivreInput = document.getElementById('corLivreInput');
+const corLivreLabel = document.getElementById('corLivreLabel');
+corLivreLabel.addEventListener('click', (e) => {
+  if (!temRecurso('ultimate')) {
+    e.preventDefault();
+    alert('Essa cor é exclusiva do plano Ultimate.');
+    return;
+  }
+});
+corLivreInput.addEventListener('input', () => {
+  corLivreHex = corLivreInput.value;
+  corEscolhida = 'livre';
+  aplicarCor('livre');
+  salvar();
+  renderizarGradeCores();
+});
+
 const comparacaoEl = document.getElementById('comparacao');
 const modalBoasVindas = document.getElementById('modalBoasVindas');
 const formAuth = document.getElementById('formAuth');
@@ -315,6 +360,7 @@ function salvar() {
     localStorage.setItem(CHAVE_TOKEN, tokenSessao);
     localStorage.setItem(CHAVE_CRIADOEM, criadoEm);
     localStorage.setItem(CHAVE_COR, corEscolhida);
+    localStorage.setItem(CHAVE_COR_HEX, corLivreHex);
   } catch (e) {
     console.warn('Não foi possível salvar os dados localmente.', e);
   }
@@ -350,6 +396,7 @@ function carregar() {
     tokenSessao = localStorage.getItem(CHAVE_TOKEN) || '';
     criadoEm = localStorage.getItem(CHAVE_CRIADOEM) || '';
     corEscolhida = localStorage.getItem(CHAVE_COR) || 'azul';
+    corLivreHex = localStorage.getItem(CHAVE_COR_HEX) || '#3b82f6';
   } catch (e) {
     console.warn('Não foi possível carregar os dados salvos.', e);
     lancamentos = [];
@@ -366,7 +413,7 @@ function temRecurso(nivelMinimo) {
   return ordem[planoEfetivo()] >= ordem[nivelMinimo];
 }
 
-const NIVEL_DA_COR = { azul: 'free', verde: 'pro', laranja: 'pro', roxo: 'ultimate', rosa: 'ultimate', vermelho: 'ultimate', rgb: 'ultimate' };
+const NIVEL_DA_COR = { azul: 'free', verde: 'pro', laranja: 'pro', roxo: 'ultimate', rosa: 'ultimate', vermelho: 'ultimate', livre: 'ultimate' };
 
 function aplicarGating() {
   const pro = temRecurso('pro');

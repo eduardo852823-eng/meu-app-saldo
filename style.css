@@ -1329,7 +1329,6 @@ html[data-cor="rgb"] {
   inset: 0;
   z-index: 300;
   background: rgba(2,4,10,0.75);
-  backdrop-filter: blur(2px);
 }
 
 .tour-overlay.escondido { display: none; }
