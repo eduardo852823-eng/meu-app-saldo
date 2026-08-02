@@ -2208,6 +2208,29 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// --- Bloquear zoom da página (pinça, Ctrl+scroll, Ctrl +/-) ---
+document.addEventListener('wheel', (e) => {
+  if (e.ctrlKey) e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0'].includes(e.key)) e.preventDefault();
+});
+
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('gesturechange', (e) => e.preventDefault());
+
+let ultimoToqueDuplo = 0;
+document.addEventListener('touchend', (e) => {
+  const agora = Date.now();
+  if (agora - ultimoToqueDuplo < 300) e.preventDefault();
+  ultimoToqueDuplo = agora;
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
 // --- Inicialização ---
 atualizarDataTopo();
 carregar();
