@@ -554,7 +554,75 @@ html[data-layout="poupix"] .hero-meta-barra-wrap { display: block; }
 .meta-completa { opacity: 0.85; }
 .meta-completa .meta-barra { background: linear-gradient(90deg, #facc15, #f97316); }
 
-/* Modal de meta inicial (PoupPix) */
+/* Aba Fixos */
+.lista-fixos { display: flex; flex-direction: column; gap: 12px; }
+.fixo-card {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 15px 16px;
+}
+.fixo-card-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.fixo-card-nome { font-weight: 700; font-size: 14px; }
+.fixo-card-valor { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+.fixo-card-valor.saida { color: var(--red); }
+.fixo-card-valor.entrada { color: var(--cyan); }
+.fixo-card-info { font-size: 11.5px; color: var(--text-dim); margin-bottom: 10px; }
+.fixo-card-progresso { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; margin-bottom: 12px; }
+.fixo-pendente-tag { color: var(--blue-bright); }
+.fixo-completo-tag { color: var(--cyan); }
+.fixo-card-acoes { display: flex; gap: 8px; }
+.fixo-card-acoes .btn-ghost-sm { flex: 1; }
+
+/* Editor de foto (crop) */
+.crop-area {
+  width: 260px;
+  height: 260px;
+  margin: 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--blue-bright);
+  touch-action: none;
+  cursor: grab;
+}
+.crop-area:active { cursor: grabbing; }
+#cropCanvas { touch-action: none; }
+
+/* Cards de plano clicáveis */
+.plano-card { cursor: pointer; transition: transform 0.15s, border-color 0.2s; border: 1px solid transparent; }
+.plano-card:hover { transform: translateY(-2px); border-color: var(--blue); }
+.plano-card-nome { display: flex; justify-content: space-between; align-items: center; }
+.plano-card-ver { font-size: 10.5px; color: var(--blue-bright); font-weight: 600; }
+
+.detalhe-plano-lista { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.detalhe-plano-lista li { padding-left: 20px; position: relative; font-size: 13px; }
+.detalhe-plano-lista li b { display: block; }
+.detalhe-plano-lista li span { display: block; font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+.detalhe-plano-lista li.tem::before { content: "✓"; position: absolute; left: 0; color: var(--cyan); font-weight: 700; }
+.detalhe-plano-lista li.nao::before { content: "✕"; position: absolute; left: 0; color: var(--red); font-weight: 700; }
+
+/* Botões de escolha no modo dev */
+.dev-plano-btn.active { background: rgba(59,130,246,0.15); border-color: var(--blue); color: var(--blue-bright); }
+
+/* Visual mais "futurista": mais espaço + transições suaves */
+.filtros, .tabs, .form-row, .meta-card-acoes { gap: 10px; }
+button { transition: transform 0.15s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease, color 0.25s ease; }
+.painel, .modal-card, .mes-card, .item, .plano-card { border-radius: 20px; }
+.tab-btn, .filtro-btn { border-radius: 12px; }
+
+/* PoupPix ocupa a largura máxima da tela e se ajusta */
+html[data-layout="poupix"] .app {
+  max-width: 640px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+@media (min-width: 700px) {
+  html[data-layout="poupix"] .app { max-width: 720px; }
+}
+@media (max-width: 420px) {
+  html[data-layout="poupix"] .app { padding-left: 10px; padding-right: 10px; }
+  html[data-layout="poupix"] .hero { padding-left: 16px; padding-right: 16px; }
+}
 .meta-inicial-opcao {
   display: block;
   width: 100%;
@@ -1343,6 +1411,8 @@ html[data-layout="cards"] .item-info { width: 100%; }
 .config-fullscreen {
   position: fixed;
   inset: 0;
+  height: 100vh;
+  height: 100dvh;
   background: var(--bg);
   z-index: 200;
   display: flex;

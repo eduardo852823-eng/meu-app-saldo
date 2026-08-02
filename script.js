@@ -11,6 +11,7 @@ let editandoId = null;
 let saldoOculto = false;
 let planoAtual = 'free';
 let devAtivo = false;
+let devPlanoEscolhido = 'ultimate';
 let emailUsuario = '';
 let fotoUsuario = '';
 let limiteGasto = null;
@@ -29,6 +30,7 @@ const CHAVE_TEMA = 'saldo_tema';
 const CHAVE_OCULTO = 'saldo_oculto';
 const CHAVE_PLANO = 'saldo_plano';
 const CHAVE_DEV = 'saldo_dev';
+const CHAVE_DEV_PLANO = 'saldo_dev_plano';
 const CHAVE_EMAIL = 'saldo_email';
 const CHAVE_FOTO = 'saldo_foto';
 const CHAVE_LIMITE = 'saldo_limite';
@@ -41,6 +43,7 @@ const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
 const CHAVE_TOKEN = 'saldo_token';
 const GOOGLE_CLIENT_ID = '1067162991665-o0md9cklrq9c1tco1qrk1jr9l62d0res.apps.googleusercontent.com';
+const AVATAR_PADRAO = './icon-192.png';
 
 const CATEGORIAS = {
   comida:     { nome: 'Comida',      icone: '🍔' },
@@ -396,6 +399,7 @@ function salvar() {
     localStorage.setItem(CHAVE_NOME, nomeUsuario);
     localStorage.setItem(CHAVE_PLANO, planoAtual);
     localStorage.setItem(CHAVE_DEV, devAtivo ? '1' : '0');
+    localStorage.setItem(CHAVE_DEV_PLANO, devPlanoEscolhido);
     localStorage.setItem(CHAVE_EMAIL, emailUsuario);
     localStorage.setItem(CHAVE_FOTO, fotoUsuario);
     localStorage.setItem(CHAVE_LIMITE, limiteGasto === null ? '' : String(limiteGasto));
@@ -432,6 +436,7 @@ function carregar() {
     const plano = localStorage.getItem(CHAVE_PLANO);
     if (plano) planoAtual = plano;
     devAtivo = localStorage.getItem(CHAVE_DEV) === '1';
+    devPlanoEscolhido = localStorage.getItem(CHAVE_DEV_PLANO) || 'ultimate';
     emailUsuario = localStorage.getItem(CHAVE_EMAIL) || '';
     fotoUsuario = localStorage.getItem(CHAVE_FOTO) || '';
     const limite = localStorage.getItem(CHAVE_LIMITE);
@@ -449,7 +454,7 @@ function carregar() {
 
 // --- Sistema de planos ---
 function planoEfetivo() {
-  return devAtivo ? 'ultimate' : planoAtual;
+  return devAtivo ? devPlanoEscolhido : planoAtual;
 }
 
 function temRecurso(nivelMinimo) {
@@ -465,6 +470,12 @@ function aplicarGating() {
   linhaRecorrente.style.display = pro ? 'flex' : 'none';
   painelBusca.style.display = pro ? 'block' : 'none';
   painelLimite.style.display = pro ? 'block' : 'none';
+  const painelDonut = document.getElementById('painelDonut');
+  const donutBloqueado = document.getElementById('donutBloqueado');
+  if (painelDonut && donutBloqueado) {
+    painelDonut.style.display = pro ? 'block' : 'none';
+    donutBloqueado.style.display = pro ? 'none' : 'block';
+  }
 
   if (!temRecurso(NIVEL_DA_COR[corEscolhida] || 'ultimate') && corEscolhida !== 'azul') {
     corEscolhida = 'azul';
@@ -478,23 +489,45 @@ function aplicarGating() {
   document.documentElement.setAttribute('data-layout', layoutAtual);
   verificarMetaInicialPoupix();
 
-  if (!temRecurso('ultimate') && metas.length > 1) {
-    metas = metas.slice(0, 1);
+  if (!temRecurso('ultimate')) {
+    const ativasCount = metas.filter(m => !m.completa).length;
+    if (ativasCount > 1) {
+      let vistas = 0;
+      metas = metas.filter(m => {
+        if (m.completa) return true;
+        vistas++;
+        return vistas <= 1;
+      });
+    }
   }
 
   planoAtualNomeEl.textContent = devAtivo
-    ? 'Ultimate (modo dev)'
+    ? `${devPlanoEscolhido === 'pro' ? 'Pro' : 'Ultimate'} (modo dev)`
     : (planoAtual === 'pro' ? 'Pro' : planoAtual === 'ultimate' ? 'Ultimate' : 'Free');
 
   atualizarBotaoPerfilTopo();
 
   devStatusEl.textContent = devAtivo
-    ? 'Ativo — todas as funções Pro e Ultimate liberadas.'
-    : 'Desbloqueia todas as funções Pro e Ultimate.';
+    ? `Ativo — simulando o plano ${devPlanoEscolhido === 'pro' ? 'Pro' : 'Ultimate'}.`
+    : 'Desbloqueia as funções Pro ou Ultimate pra testar.';
   devStatusEl.classList.toggle('ativo', devAtivo);
   devForm.style.display = devAtivo ? 'none' : 'flex';
   btnDevDesativar.style.display = devAtivo ? 'inline-block' : 'none';
+  const devToggleWrap = document.getElementById('devToggleWrap');
+  if (devToggleWrap) {
+    devToggleWrap.style.display = devAtivo ? 'flex' : 'none';
+    document.querySelectorAll('.dev-plano-btn').forEach(b => b.classList.toggle('active', b.dataset.plano === devPlanoEscolhido));
+  }
 }
+
+document.querySelectorAll('.dev-plano-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    devPlanoEscolhido = btn.dataset.plano;
+    salvar();
+    aplicarGating();
+    preencherCategorias();
+  });
+});
 
 btnDevAtivar.addEventListener('click', () => {
   if (devSenhaInput.value === SENHA_DEV) {
@@ -550,34 +583,40 @@ const DADOS_PLANOS = [
   {
     nome: 'Free',
     itens: [
-      { texto: 'Lançar gastos e ganhos', tem: true },
-      { texto: 'Meta de economia', tem: true },
-      { texto: 'Resumo por mês', tem: true },
-      { texto: 'Categorias', tem: false },
-      { texto: 'Gastos recorrentes', tem: false },
-      { texto: 'Busca e limite de gasto', tem: false }
+      { texto: 'Lançar gastos e ganhos', tem: true, detalhe: 'Até 40 lançamentos guardados. Depois disso, precisa de um plano pago.' },
+      { texto: '1 meta de economia', tem: true, detalhe: 'Só uma meta ativa por vez. Ao completar, pode criar outra.' },
+      { texto: 'Resumo por mês', tem: true, detalhe: 'Veja se cada mês fechou no lucro ou no prejuízo.' },
+      { texto: 'Layouts Padrão e PoupPix', tem: true, detalhe: 'Só a cor azul disponível.' },
+      { texto: 'Categorias', tem: false, detalhe: 'Organizar por tipo de gasto é recurso Pro.' },
+      { texto: 'Gastos e ganhos fixos', tem: false, detalhe: 'Repetir lançamentos todo mês é recurso Pro.' },
+      { texto: 'Gráfico de distribuição', tem: false, detalhe: 'O gráfico de rosca por categoria é recurso Pro.' },
+      { texto: 'Busca e limite de gasto', tem: false, detalhe: 'Buscar lançamentos e travar um teto mensal é Pro.' }
     ]
   },
   {
     nome: 'Pro',
     itens: [
-      { texto: 'Tudo do Free', tem: true },
-      { texto: 'Categorias personalizadas', tem: true },
-      { texto: 'Gastos recorrentes', tem: true },
+      { texto: 'Tudo do Free, sem limite de lançamentos', tem: true },
+      { texto: 'Categorias personalizadas', tem: true, detalhe: 'Organize cada gasto por tipo.' },
+      { texto: 'Gastos e ganhos fixos', tem: true, detalhe: 'Repita automaticamente todo mês, no dia que escolher.' },
+      { texto: 'Gráfico de distribuição', tem: true, detalhe: 'Veja pra onde seu dinheiro está indo.' },
       { texto: 'Alerta de limite mensal', tem: true },
       { texto: 'Busca nos lançamentos', tem: true },
-      { texto: 'Múltiplas metas', tem: false }
+      { texto: 'Layouts Compacto e Moderno', tem: true },
+      { texto: 'Cores Verde e Laranja', tem: true },
+      { texto: 'Múltiplas metas', tem: false, detalhe: 'Só o Ultimate libera metas ilimitadas ao mesmo tempo.' },
+      { texto: 'Foto de perfil personalizada', tem: false }
     ]
   },
   {
     nome: 'Ultimate',
     itens: [
       { texto: 'Tudo do Pro', tem: true },
-      { texto: 'Múltiplas metas', tem: true },
-      { texto: 'Perfil com foto', tem: true },
-      { texto: 'Avisos por e-mail (dentro do app)', tem: true },
-      { texto: 'Sincronizar entre aparelhos', tem: false },
-      { texto: 'Vincular banco de verdade', tem: false }
+      { texto: 'Metas ilimitadas', tem: true, detalhe: 'Junte dinheiro pra quantas metas quiser ao mesmo tempo.' },
+      { texto: 'Foto de perfil personalizada', tem: true, detalhe: 'Com editor pra mover e dar zoom antes de salvar.' },
+      { texto: 'Layouts Cards e Neon', tem: true },
+      { texto: 'Cores Roxo, Rosa, Vermelho e Livre', tem: true, detalhe: 'Escolha qualquer cor com o seletor livre.' },
+      { texto: 'Avisos por e-mail (dentro do app)', tem: true }
     ]
   }
 ];
@@ -586,10 +625,14 @@ const DADOS_PLANOS = [
 function abrirConfig() {
   configFullscreen.classList.remove('escondido');
   painelPerfilTopo.classList.add('escondido');
+  document.body.style.overflow = 'hidden';
 }
 
 document.getElementById('btnConfig').addEventListener('click', abrirConfig);
-btnFecharConfig.addEventListener('click', () => configFullscreen.classList.add('escondido'));
+btnFecharConfig.addEventListener('click', () => {
+  configFullscreen.classList.add('escondido');
+  document.body.style.overflow = '';
+});
 btnPerfilConfig.addEventListener('click', abrirConfig);
 
 configSideItens.forEach(item => {
@@ -629,15 +672,9 @@ function confirmarSair() {
 
 // --- Perfil no topo (dropdown) ---
 function atualizarBotaoPerfilTopo() {
-  if (fotoUsuario) {
-    perfilTopoFoto.src = fotoUsuario;
-    perfilTopoFoto.style.display = 'block';
-    perfilTopoInicial.style.display = 'none';
-  } else {
-    perfilTopoFoto.style.display = 'none';
-    perfilTopoInicial.style.display = 'block';
-    perfilTopoInicial.textContent = nomeUsuario ? nomeUsuario.charAt(0).toUpperCase() : '?';
-  }
+  perfilTopoFoto.src = fotoUsuario || AVATAR_PADRAO;
+  perfilTopoFoto.style.display = 'block';
+  perfilTopoInicial.style.display = 'none';
 }
 
 btnPerfil.addEventListener('click', () => {
@@ -648,14 +685,9 @@ btnPerfil.addEventListener('click', () => {
     : '—';
   painelPerfilPlano.textContent = devAtivo ? 'Ultimate (dev)' : (planoAtual === 'pro' ? 'Pro' : planoAtual === 'ultimate' ? 'Ultimate' : 'Free');
 
-  if (fotoUsuario) {
-    perfilTopoFotoGrande.src = fotoUsuario;
-    perfilTopoFotoGrande.style.display = 'block';
-    perfilTopoPlaceholderGrande.style.display = 'none';
-  } else {
-    perfilTopoFotoGrande.style.display = 'none';
-    perfilTopoPlaceholderGrande.style.display = 'flex';
-  }
+  perfilTopoFotoGrande.src = fotoUsuario || AVATAR_PADRAO;
+  perfilTopoFotoGrande.style.display = 'block';
+  perfilTopoPlaceholderGrande.style.display = 'none';
 
   painelPerfilTopo.classList.toggle('escondido');
 });
@@ -677,40 +709,41 @@ btnFotoTopo.addEventListener('click', () => {
 });
 inputFotoTopo.addEventListener('change', (e) => {
   const arquivo = e.target.files[0];
-  if (!arquivo) return;
-  const leitor = new FileReader();
-  leitor.onload = (evento) => {
-    fotoUsuario = evento.target.result;
-    salvar();
-    atualizarBotaoPerfilTopo();
-    carregarCamposPerfil();
-  };
-  leitor.readAsDataURL(arquivo);
+  if (arquivo) abrirCropFoto(arquivo);
+  inputFotoTopo.value = '';
 });
 
 function renderizarComparativo() {
-  comparativoPlanosEl.innerHTML = DADOS_PLANOS.map(p => `
-    <div class="plano-card">
-      <div class="plano-card-nome">${p.nome}</div>
+  comparativoPlanosEl.innerHTML = DADOS_PLANOS.map((p, i) => `
+    <div class="plano-card" data-plano-idx="${i}">
+      <div class="plano-card-nome">${p.nome} <span class="plano-card-ver">Ver detalhes ›</span></div>
       <ul>
-        ${p.itens.map(i => `<li class="${i.tem ? 'tem' : 'nao'}">${i.texto}</li>`).join('')}
+        ${p.itens.map(it => `<li class="${it.tem ? 'tem' : 'nao'}">${it.texto}</li>`).join('')}
       </ul>
     </div>
   `).join('');
+  comparativoPlanosEl.querySelectorAll('.plano-card').forEach(card => {
+    card.addEventListener('click', () => abrirDetalhePlano(DADOS_PLANOS[card.dataset.planoIdx]));
+  });
 }
+
+const modalDetalhePlano = document.getElementById('modalDetalhePlano');
+function abrirDetalhePlano(plano) {
+  document.getElementById('detalhePlanoNome').textContent = plano.nome;
+  document.getElementById('detalhePlanoDescricao').innerHTML = plano.itens.map(it =>
+    `<li class="${it.tem ? 'tem' : 'nao'}"><b>${it.texto}</b><span>${it.detalhe || ''}</span></li>`
+  ).join('');
+  modalDetalhePlano.classList.remove('escondido');
+}
+document.getElementById('btnFecharDetalhePlano').addEventListener('click', () => modalDetalhePlano.classList.add('escondido'));
 
 // --- Perfil (nome, e-mail, foto) ---
 function carregarCamposPerfil() {
   configNome.value = nomeUsuario;
   configEmail.value = emailUsuario;
-  if (fotoUsuario) {
-    perfilFotoImg.src = fotoUsuario;
-    perfilFotoImg.style.display = 'block';
-    perfilFotoPlaceholder.style.display = 'none';
-  } else {
-    perfilFotoImg.style.display = 'none';
-    perfilFotoPlaceholder.style.display = 'flex';
-  }
+  perfilFotoImg.src = fotoUsuario || AVATAR_PADRAO;
+  perfilFotoImg.style.display = 'block';
+  perfilFotoPlaceholder.style.display = 'none';
 }
 
 btnFoto.addEventListener('click', () => {
@@ -723,13 +756,108 @@ btnFoto.addEventListener('click', () => {
 
 inputFoto.addEventListener('change', (e) => {
   const arquivo = e.target.files[0];
-  if (!arquivo) return;
+  if (arquivo) abrirCropFoto(arquivo);
+  inputFoto.value = '';
+});
+
+// --- Editor de foto: mover e dar zoom antes de salvar ---
+const modalCropFoto = document.getElementById('modalCropFoto');
+const cropCanvas = document.getElementById('cropCanvas');
+const cropCtx = cropCanvas.getContext('2d');
+const cropZoom = document.getElementById('cropZoom');
+let cropImg = null;
+let cropOffsetX = 0, cropOffsetY = 0, cropEscala = 1, cropEscalaBase = 1;
+let cropArrastando = false, cropUltimoX = 0, cropUltimoY = 0;
+
+function abrirCropFoto(arquivo) {
   const leitor = new FileReader();
   leitor.onload = (evento) => {
-    fotoUsuario = evento.target.result;
-    carregarCamposPerfil();
+    const img = new Image();
+    img.onload = () => {
+      cropImg = img;
+      cropEscalaBase = Math.max(cropCanvas.width / img.width, cropCanvas.height / img.height);
+      cropEscala = 1;
+      cropZoom.value = 1;
+      cropOffsetX = 0;
+      cropOffsetY = 0;
+      desenharCrop();
+      modalCropFoto.classList.remove('escondido');
+    };
+    img.src = evento.target.result;
   };
   leitor.readAsDataURL(arquivo);
+}
+
+function desenharCrop() {
+  if (!cropImg) return;
+  const escalaFinal = cropEscalaBase * cropEscala;
+  const w = cropImg.width * escalaFinal;
+  const h = cropImg.height * escalaFinal;
+  cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+  cropCtx.save();
+  cropCtx.beginPath();
+  cropCtx.arc(cropCanvas.width / 2, cropCanvas.height / 2, cropCanvas.width / 2, 0, Math.PI * 2);
+  cropCtx.clip();
+  cropCtx.drawImage(
+    cropImg,
+    (cropCanvas.width - w) / 2 + cropOffsetX,
+    (cropCanvas.height - h) / 2 + cropOffsetY,
+    w, h
+  );
+  cropCtx.restore();
+}
+
+function limitarOffsetCrop() {
+  const escalaFinal = cropEscalaBase * cropEscala;
+  const w = cropImg.width * escalaFinal;
+  const h = cropImg.height * escalaFinal;
+  const maxX = Math.max(0, (w - cropCanvas.width) / 2);
+  const maxY = Math.max(0, (h - cropCanvas.height) / 2);
+  cropOffsetX = Math.max(-maxX, Math.min(maxX, cropOffsetX));
+  cropOffsetY = Math.max(-maxY, Math.min(maxY, cropOffsetY));
+}
+
+function posicaoEvento(e) {
+  if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
+['pointerdown', 'touchstart'].forEach(ev => cropCanvas.addEventListener(ev, (e) => {
+  cropArrastando = true;
+  const p = posicaoEvento(e);
+  cropUltimoX = p.x;
+  cropUltimoY = p.y;
+}));
+['pointerup', 'pointerleave', 'touchend'].forEach(ev => cropCanvas.addEventListener(ev, () => { cropArrastando = false; }));
+['pointermove', 'touchmove'].forEach(ev => cropCanvas.addEventListener(ev, (e) => {
+  if (!cropArrastando) return;
+  e.preventDefault();
+  const p = posicaoEvento(e);
+  cropOffsetX += p.x - cropUltimoX;
+  cropOffsetY += p.y - cropUltimoY;
+  cropUltimoX = p.x;
+  cropUltimoY = p.y;
+  limitarOffsetCrop();
+  desenharCrop();
+}));
+
+cropZoom.addEventListener('input', () => {
+  cropEscala = parseFloat(cropZoom.value);
+  limitarOffsetCrop();
+  desenharCrop();
+});
+
+document.getElementById('btnCancelarCrop').addEventListener('click', () => {
+  modalCropFoto.classList.add('escondido');
+});
+
+let cropDestino = null;
+document.getElementById('btnConfirmarCrop').addEventListener('click', () => {
+  fotoUsuario = cropCanvas.toDataURL('image/jpeg', 0.88);
+  salvar();
+  atualizarBotaoPerfilTopo();
+  carregarCamposPerfil();
+  modalCropFoto.classList.add('escondido');
 });
 
 btnSalvarPerfil.addEventListener('click', () => {
@@ -1051,7 +1179,9 @@ function iniciarBotaoGoogle() {
   if (!window.google || GOOGLE_CLIENT_ID.indexOf('COLOQUE_SEU') !== -1) return;
   google.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
-    callback: processarLoginGoogle
+    callback: processarLoginGoogle,
+    use_fedcm_for_prompt: false,
+    ux_mode: 'popup'
   });
   const container = document.getElementById('botaoGoogle');
   const largura = Math.min(container.offsetWidth || 300, 350);
@@ -1059,6 +1189,12 @@ function iniciarBotaoGoogle() {
     container,
     { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: largura }
   );
+
+  // O Google bloqueia o login dentro de apps instalados (PWA em modo standalone).
+  // Se detectarmos isso, avisamos e oferecemos um link pra abrir no navegador normal.
+  const rodandoInstalado = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const avisoEl = document.getElementById('avisoGooglePwa');
+  if (avisoEl) avisoEl.style.display = rodandoInstalado ? 'block' : 'none';
 }
 window.iniciarBotaoGoogle = iniciarBotaoGoogle;
 
@@ -1128,6 +1264,7 @@ const DICAS_ABA = {
   lancar: 'Adicione seus gastos e ganhos aqui',
   meses: 'Veja se cada mês fechou no lucro ou no prejuízo',
   analise: 'Acompanhe metas, comparações e maiores lançamentos',
+  fixos: 'Gerencie seus gastos e ganhos fixos, sem lotar a tela',
   config: 'Ajuste seu perfil, plano e preferências'
 };
 
@@ -1285,6 +1422,11 @@ form.addEventListener('submit', (e) => {
 
   if (!descricao || isNaN(valor) || valor <= 0) return;
 
+  if (editandoId === null && !temRecurso('pro') && lancamentos.length >= 40) {
+    alert('Você atingiu o limite de 40 lançamentos do plano Free. Assine o Pro pra lançar sem limite.');
+    return;
+  }
+
   if (editandoId !== null) {
     const item = lancamentos.find(l => l.id === editandoId);
     if (item) {
@@ -1358,7 +1500,8 @@ function renderizarTudo() {
   const filtrados = lancamentos.filter(l => {
     const passaTipo = filtroAtual === 'todos' || l.tipo === filtroAtual;
     const passaBusca = !termoBusca || l.descricao.toLowerCase().includes(termoBusca);
-    return passaTipo && passaBusca;
+    const passaPendente = !(l.recorrente && itemPendente(l));
+    return passaTipo && passaBusca && passaPendente;
   });
 
   blocosMeses.innerHTML = '';
@@ -1400,6 +1543,7 @@ function renderizarTudo() {
   atualizarComparacao();
   atualizarResumoMeses();
   atualizarAvisoLimite();
+  atualizarFixos();
 }
 
 // --- Criar elemento de item ---
@@ -1519,7 +1663,7 @@ btnAddMeta.addEventListener('click', () => {
     return;
   }
 
-  if (!temRecurso('ultimate') && metas.length >= 1) {
+  if (!temRecurso('ultimate') && metas.filter(m => !m.completa).length >= 1) {
     metasAvisoLimiteEl.style.display = 'block';
     return;
   }
@@ -1539,9 +1683,17 @@ function removerMeta(id) {
 }
 
 function atualizarMeta() {
-  if (!temRecurso('ultimate') && metas.length > 1) {
-    metas = metas.slice(0, 1);
-    salvar();
+  if (!temRecurso('ultimate')) {
+    const ativasCount = metas.filter(m => !m.completa).length;
+    if (ativasCount > 1) {
+      let vistas = 0;
+      metas = metas.filter(m => {
+        if (m.completa) return true;
+        vistas++;
+        return vistas <= 1;
+      });
+      salvar();
+    }
   }
 
   listaMetasEl.innerHTML = '';
@@ -1606,7 +1758,7 @@ function atualizarMeta() {
 
   if (precisaSalvar) salvar();
 
-  btnAddMeta.style.display = (!temRecurso('ultimate') && metas.length >= 1) ? 'none' : 'inline-block';
+  btnAddMeta.style.display = (!temRecurso('ultimate') && metas.filter(m => !m.completa).length >= 1) ? 'none' : 'inline-block';
 }
 
 function guardarNaMeta(id) {
@@ -1811,25 +1963,19 @@ function atualizarDonut() {
 
 // --- Barra de meta no topo (layout PoupPix) ---
 const heroMetaBarraWrap = document.getElementById('heroMetaBarraWrap');
-const heroMetaNome = document.getElementById('heroMetaNome');
-const heroMetaPct = document.getElementById('heroMetaPct');
-const heroMetaBarra = document.getElementById('heroMetaBarra');
 const heroMetasListaEl = document.getElementById('heroMetasLista');
 
 function atualizarBarraHeroMeta() {
-  if (metas.length === 0) { heroMetaBarraWrap.style.display = 'none'; heroMetasListaEl.innerHTML = ''; return; }
-  const meta = metas[0];
-  const pct = Math.min(((meta.acumulado || 0) / meta.valor) * 100, 100);
-  heroMetaNome.textContent = meta.nome;
-  heroMetaPct.textContent = pct.toFixed(0) + '%';
-  heroMetaBarra.style.width = pct + '%';
+  const ativas = metas.filter(m => !m.completa);
+  if (ativas.length === 0) { heroMetaBarraWrap.style.display = 'none'; heroMetasListaEl.innerHTML = ''; return; }
+  heroMetaBarraWrap.style.display = 'block';
 
-  heroMetasListaEl.innerHTML = metas.map(m => {
+  heroMetasListaEl.innerHTML = ativas.map(m => {
     const p = Math.min(((m.acumulado || 0) / m.valor) * 100, 100);
     return `
       <div class="hero-mini-meta">
         <div class="hero-mini-meta-topo">
-          <span>${m.completa ? '🏆 ' : ''}${escapeHTML(m.nome)}</span>
+          <span>${escapeHTML(m.nome)}</span>
           <span>${p.toFixed(0)}%</span>
         </div>
         <div class="hero-meta-barra-fundo"><div class="hero-meta-barra-preenchida" style="width:${p}%"></div></div>
@@ -1877,6 +2023,68 @@ document.getElementById('btnPularMetaInicial').addEventListener('click', () => {
   localStorage.setItem(CHAVE_META_INICIAL_VISTA, '1');
   modalMetaInicial.classList.add('escondido');
 });
+
+// --- Aba Fixos: agrupa lançamentos recorrentes por série ---
+const listaFixosEl = document.getElementById('listaFixos');
+const fixosVazioEl = document.getElementById('fixosVazio');
+
+function chaveSerie(item) {
+  return `${item.descricao}|${item.valor}|${item.diaRecorrente}|${item.tipo}`;
+}
+
+function atualizarFixos() {
+  const recorrentes = lancamentos.filter(l => l.recorrente);
+  const series = {};
+  recorrentes.forEach(item => {
+    const chave = chaveSerie(item);
+    if (!series[chave]) series[chave] = [];
+    series[chave].push(item);
+  });
+
+  const chaves = Object.keys(series);
+  fixosVazioEl.classList.toggle('mostrar', chaves.length === 0);
+  listaFixosEl.innerHTML = '';
+
+  chaves.forEach(chave => {
+    const itens = series[chave].sort((a, b) => new Date(a.data) - new Date(b.data));
+    const primeiro = itens[0];
+    const lancados = itens.filter(i => !itemPendente(i)).length;
+    const pendentes = itens.filter(i => itemPendente(i)).length;
+    const ultimaData = itens[itens.length - 1].data;
+
+    const card = document.createElement('div');
+    card.className = 'fixo-card';
+    card.innerHTML = `
+      <div class="fixo-card-topo">
+        <span class="fixo-card-nome">${ICONE_TIPO[primeiro.tipo]} ${escapeHTML(primeiro.descricao)}</span>
+        <span class="fixo-card-valor ${primeiro.tipo}">${formatarMoeda(primeiro.valor)}</span>
+      </div>
+      <div class="fixo-card-info">Todo dia ${primeiro.diaRecorrente || '—'} · até ${nomeMes(ultimaData)}</div>
+      <div class="fixo-card-progresso">
+        <span>${lancados} lançado${lancados !== 1 ? 's' : ''}</span>
+        ${pendentes > 0 ? `<span class="fixo-pendente-tag">🕒 ${pendentes} agendado${pendentes !== 1 ? 's' : ''}</span>` : '<span class="fixo-completo-tag">✓ completo</span>'}
+      </div>
+      <div class="fixo-card-acoes">
+        ${pendentes > 0 ? '<button class="btn-ghost-sm btn-cancelar-serie">Cancelar restantes</button>' : ''}
+        <button class="btn-ghost-sm btn-excluir-serie" style="color:var(--red);">Excluir tudo</button>
+      </div>
+    `;
+    const btnCancelar = card.querySelector('.btn-cancelar-serie');
+    if (btnCancelar) btnCancelar.addEventListener('click', () => {
+      if (!confirm('Cancelar os lançamentos futuros dessa série? Os que já foram lançados continuam no histórico.')) return;
+      lancamentos = lancamentos.filter(l => !(chaveSerie(l) === chave && itemPendente(l)));
+      salvar();
+      renderizarTudo();
+    });
+    card.querySelector('.btn-excluir-serie').addEventListener('click', () => {
+      if (!confirm('Excluir TODOS os lançamentos dessa série, inclusive os que já entraram?')) return;
+      lancamentos = lancamentos.filter(l => chaveSerie(l) !== chave);
+      salvar();
+      renderizarTudo();
+    });
+    listaFixosEl.appendChild(card);
+  });
+}
 
 // --- Comparação com o mês anterior ---
 function atualizarComparacao() {

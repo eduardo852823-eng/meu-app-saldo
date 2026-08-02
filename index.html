@@ -54,6 +54,9 @@
 
     <div class="divisor-ou"><span>ou</span></div>
     <div id="botaoGoogle" style="margin-top:4px; display:flex; justify-content:center;"></div>
+    <p id="avisoGooglePwa" class="campo-aviso" style="display:none;text-align:center;margin-top:10px;">
+      O login do Google não funciona dentro do app instalado. Abra <b>economix.onrender.com</b> pelo navegador (Chrome/Safari) pra entrar com Google, ou use e-mail e senha aqui no app.
+    </p>
 
     <button id="btnSemConta" class="link-discreto" style="margin-top:16px;">Continuar sem conta (dados só neste aparelho)</button>
   </div>
@@ -133,13 +136,6 @@
       </div>
     </div>
     <div class="hero-meta-barra-wrap" id="heroMetaBarraWrap">
-      <div class="hero-meta-barra-topo">
-        <span id="heroMetaNome">Sua meta</span>
-        <span id="heroMetaPct">0%</span>
-      </div>
-      <div class="hero-meta-barra-fundo">
-        <div class="hero-meta-barra-preenchida" id="heroMetaBarra" style="width:0%"></div>
-      </div>
       <div id="heroMetasLista" class="hero-metas-lista"></div>
     </div>
   </section>
@@ -148,6 +144,7 @@
     <button class="tab-btn active" data-tab="lancar">Lançar</button>
     <button class="tab-btn" data-tab="meses">Meses</button>
     <button class="tab-btn" data-tab="analise">Análise</button>
+    <button class="tab-btn" data-tab="fixos">Fixos</button>
   </nav>
   <p class="tabs-dica" id="tabsDica">Adicione seus gastos e ganhos aqui</p>
 
@@ -251,7 +248,7 @@
   <!-- ABA ANÁLISE -->
   <section class="tab-conteudo" id="tab-analise">
 
-    <section class="painel">
+    <section class="painel" id="painelDonut" style="display:none;">
       <div class="lista-header" style="margin-bottom:14px;">
         <span>Distribuição de gastos</span>
       </div>
@@ -266,6 +263,12 @@
       <div id="donutVazio" class="vazio vazio-mini">
         <span>Sem gastos registrados este mês ainda.</span>
       </div>
+    </section>
+    <section class="painel" id="donutBloqueado" style="text-align:center;">
+      <div class="lista-header" style="margin-bottom:10px;justify-content:center;">
+        <span>Distribuição de gastos 🔒</span>
+      </div>
+      <p class="config-fs-explica" style="margin:0 auto;">Esse gráfico é um recurso Pro. Assine pra ver pra onde seu dinheiro está indo.</p>
     </section>
 
     <section class="painel meta-painel">
@@ -317,6 +320,19 @@
       </div>
     </section>
 
+  </section>
+
+  <!-- ABA FIXOS -->
+  <section class="tab-conteudo" id="tab-fixos">
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom:14px;">
+        <span>Gastos e ganhos fixos</span>
+      </div>
+      <div id="listaFixos" class="lista-fixos"></div>
+      <div id="fixosVazio" class="vazio vazio-mini">
+        <span>Nenhum lançamento fixo criado ainda. Marque "Repetir todo mês" ao lançar.</span>
+      </div>
+    </section>
   </section>
 
   <!-- CONFIGURAÇÕES — tela cheia, estilo painel de controle -->
@@ -412,6 +428,10 @@
             <button id="btnDevAtivar" class="btn-ghost-sm">Ativar</button>
           </div>
           <button id="btnDevDesativar" class="link-discreto" style="display:none;margin-top:8px;">Desativar modo desenvolvedor</button>
+          <div id="devToggleWrap" style="display:none;gap:8px;margin-top:14px;">
+            <button class="btn-ghost-sm dev-plano-btn" data-plano="pro">Simular Pro</button>
+            <button class="btn-ghost-sm dev-plano-btn" data-plano="ultimate">Simular Ultimate</button>
+          </div>
         </div>
 
         <div class="config-fs-secao" id="fsSobre">
@@ -527,6 +547,29 @@
       <h1>Meta concluída!</h1>
       <p class="modal-explica">Parabéns, você completou <b id="parabensMetaNome" style="color:var(--text);">sua meta</b>! 🎉</p>
       <button id="btnFecharParabensMeta" class="btn-add" style="width:100%;">Que orgulho!</button>
+    </div>
+  </div>
+
+  <!-- Editor de foto: mover e dar zoom -->
+  <div class="modal-overlay escondido" id="modalCropFoto">
+    <div class="modal-card" style="max-width:320px;">
+      <h1 style="font-size:16px;">Ajustar sua foto</h1>
+      <p class="modal-explica">Arraste pra mover e use o controle pra dar zoom.</p>
+      <div class="crop-area">
+        <canvas id="cropCanvas" width="260" height="260"></canvas>
+      </div>
+      <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" style="width:100%;margin:14px 0;">
+      <button id="btnConfirmarCrop" class="btn-add" style="width:100%;margin-bottom:8px;">Usar essa foto</button>
+      <button id="btnCancelarCrop" class="link-discreto">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Detalhe do plano -->
+  <div class="modal-overlay escondido" id="modalDetalhePlano">
+    <div class="modal-card" style="max-width:340px;text-align:left;">
+      <h1 id="detalhePlanoNome" style="font-size:18px;margin-bottom:14px;">Plano</h1>
+      <ul id="detalhePlanoDescricao" class="detalhe-plano-lista"></ul>
+      <button id="btnFecharDetalhePlano" class="btn-add" style="width:100%;margin-top:16px;">Entendi</button>
     </div>
   </div>
 
