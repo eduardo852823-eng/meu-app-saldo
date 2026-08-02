@@ -43,7 +43,12 @@ const SENHA_DEV = '1708';
 const API_URL = 'https://meu-app-saldo.onrender.com';
 const CHAVE_TOKEN = 'saldo_token';
 const GOOGLE_CLIENT_ID = '1067162991665-o0md9cklrq9c1tco1qrk1jr9l62d0res.apps.googleusercontent.com';
-const AVATAR_PADRAO = './icon-192.png';
+const AVATAR_PADRAO = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" fill="#7b87a3"/>
+  <circle cx="50" cy="38" r="18" fill="#c6cbdb"/>
+  <path d="M50 60c-24 0-38 14-38 32v8h76v-8c0-18-14-32-38-32z" fill="#c6cbdb"/>
+</svg>`);
 
 const CATEGORIAS = {
   comida:     { nome: 'Comida',      icone: '🍔' },
@@ -171,6 +176,7 @@ const PASSOS_TOUR = [
   { seletor: '[data-tab="lancar"]', titulo: 'Lançar', texto: 'Aqui você anota o que gastou ou recebeu. Escolhe "Gastei" ou "Recebi" e clica em Adicionar.' },
   { seletor: '[data-tab="meses"]', titulo: 'Meses', texto: 'Mostra se cada mês fechou no lucro ou no prejuízo, separadinho por período.' },
   { seletor: '[data-tab="analise"]', titulo: 'Análise', texto: 'Suas metas de economia, comparação com o mês passado e maiores lançamentos.' },
+  { seletor: '[data-tab="fixos"]', titulo: 'Fixos', texto: 'Gerencie seus gastos e ganhos que se repetem todo mês, sem lotar sua tela.' },
   { seletor: '#btnPerfil', titulo: 'Seu perfil', texto: 'Clica aqui pra ver sua conta, foto e data de criação.' },
   { seletor: '#btnConfig', titulo: 'Configurações', texto: 'Aqui ficam plano, personalização, modo desenvolvedor e mais.' }
 ];
@@ -306,7 +312,7 @@ coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
   });
 });
 const layoutGradeEl = document.getElementById('layoutGrade');
-const nivelLayout = { padrao: 'free', poupix: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
+const nivelLayout = { padrao: 'free', poupix: 'free', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
 
 function renderizarGradeLayout() {
   layoutGradeEl.querySelectorAll('.layout-opcao').forEach(btn => {
@@ -482,7 +488,7 @@ function aplicarGating() {
   }
   aplicarCor(corEscolhida);
 
-  const nivelLayout = { padrao: 'free', poupix: 'free', compacto: 'pro', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
+  const nivelLayout = { padrao: 'free', poupix: 'free', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
   if (!temRecurso(nivelLayout[layoutAtual] || 'ultimate')) {
     layoutAtual = 'padrao';
   }
@@ -1253,11 +1259,14 @@ function atualizarPreviewFimRecorrente() {
   let qtd = parseInt(quantosMesesSelect.value);
   if (isNaN(qtd) || qtd < 1) qtd = 1;
   if (qtd > 60) qtd = 60;
+  const aplicarEsteMes = document.getElementById('checkAplicarEsteMes').checked;
   const agora = new Date();
-  const fim = new Date(agora.getFullYear(), agora.getMonth() + qtd - 1, 1);
-  previewFimRecorrenteEl.textContent = `Isso vai criar ${qtd} lançamento${qtd > 1 ? 's' : ''}, de ${nomeMes(agora)} até ${nomeMes(fim)}.`;
+  const inicio = new Date(agora.getFullYear(), agora.getMonth() + (aplicarEsteMes ? 0 : 1), 1);
+  const fim = new Date(inicio.getFullYear(), inicio.getMonth() + qtd - 1, 1);
+  previewFimRecorrenteEl.textContent = `Isso vai criar ${qtd} lançamento${qtd > 1 ? 's' : ''}, de ${nomeMes(inicio)} até ${nomeMes(fim)}.`;
 }
 quantosMesesSelect.addEventListener('input', atualizarPreviewFimRecorrente);
+document.getElementById('checkAplicarEsteMes').addEventListener('change', atualizarPreviewFimRecorrente);
 
 // --- Abas ---
 const DICAS_ABA = {
@@ -1445,8 +1454,10 @@ form.addEventListener('submit', (e) => {
       if (isNaN(qtdMeses) || qtdMeses < 1) qtdMeses = 1;
       if (qtdMeses > 60) qtdMeses = 60;
       const agora = new Date();
+      const aplicarEsteMes = document.getElementById('checkAplicarEsteMes').checked;
+      const inicioI = aplicarEsteMes ? 0 : 1;
 
-      for (let i = 0; i < qtdMeses; i++) {
+      for (let i = inicioI; i < qtdMeses + inicioI; i++) {
         const dataLancamento = new Date(agora.getFullYear(), agora.getMonth() + i, 1);
         const ultimoDiaDoMes = new Date(dataLancamento.getFullYear(), dataLancamento.getMonth() + 1, 0).getDate();
         dataLancamento.setDate(Math.min(dia, ultimoDiaDoMes));
@@ -1761,46 +1772,63 @@ function atualizarMeta() {
   btnAddMeta.style.display = (!temRecurso('ultimate') && metas.filter(m => !m.completa).length >= 1) ? 'none' : 'inline-block';
 }
 
+let metaValorAcaoId = null;
+let metaValorAcaoTipo = null;
+
 function guardarNaMeta(id) {
-  const meta = metas.find(m => m.id === id);
-  if (!meta) return;
-  const valor = parseFloat(prompt(`Quanto você quer guardar em "${meta.nome}"? (isso vai sair do seu saldo)`));
-  if (isNaN(valor) || valor <= 0) return;
-  meta.acumulado = (meta.acumulado || 0) + valor;
-  lancamentos.unshift({
-    id: Date.now(),
-    descricao: `Guardado para: ${meta.nome}`,
-    valor,
-    tipo: 'saida',
-    categoria: '',
-    recorrente: false,
-    diaRecorrente: null,
-    data: new Date()
-  });
-  salvar();
-  renderizarTudo();
+  abrirModalValorMeta(id, 'guardar');
 }
 
 function retirarDaMeta(id) {
+  abrirModalValorMeta(id, 'retirar');
+}
+
+const modalValorMeta = document.getElementById('modalValorMeta');
+const valorMetaTitulo = document.getElementById('valorMetaTitulo');
+const valorMetaInput = document.getElementById('valorMetaInput');
+
+function abrirModalValorMeta(id, tipo) {
   const meta = metas.find(m => m.id === id);
   if (!meta) return;
-  const valor = parseFloat(prompt(`Quanto você quer retirar de "${meta.nome}"? (máximo ${formatarMoeda(meta.acumulado)})`));
-  if (isNaN(valor) || valor <= 0) return;
-  const valorReal = Math.min(valor, meta.acumulado);
-  meta.acumulado -= valorReal;
-  lancamentos.unshift({
-    id: Date.now(),
-    descricao: `Retirado de: ${meta.nome}`,
-    valor: valorReal,
-    tipo: 'entrada',
-    categoria: '',
-    recorrente: false,
-    diaRecorrente: null,
-    data: new Date()
-  });
+  metaValorAcaoId = id;
+  metaValorAcaoTipo = tipo;
+  valorMetaTitulo.textContent = tipo === 'guardar'
+    ? `Quanto guardar em "${meta.nome}"?`
+    : `Quanto retirar de "${meta.nome}"? (máx. ${formatarMoeda(meta.acumulado)})`;
+  valorMetaInput.value = '';
+  modalValorMeta.classList.remove('escondido');
+  setTimeout(() => valorMetaInput.focus(), 50);
+}
+
+document.getElementById('btnCancelarValorMeta').addEventListener('click', () => {
+  modalValorMeta.classList.add('escondido');
+});
+
+document.getElementById('formValorMeta').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const meta = metas.find(m => m.id === metaValorAcaoId);
+  const valor = parseFloat(valorMetaInput.value);
+  if (!meta || isNaN(valor) || valor <= 0) return;
+
+  if (metaValorAcaoTipo === 'guardar') {
+    meta.acumulado = (meta.acumulado || 0) + valor;
+    lancamentos.unshift({
+      id: Date.now(), descricao: `Guardado para: ${meta.nome}`, valor, tipo: 'saida',
+      categoria: '', recorrente: false, diaRecorrente: null, data: new Date()
+    });
+  } else {
+    const valorReal = Math.min(valor, meta.acumulado);
+    meta.acumulado -= valorReal;
+    lancamentos.unshift({
+      id: Date.now(), descricao: `Retirado de: ${meta.nome}`, valor: valorReal, tipo: 'entrada',
+      categoria: '', recorrente: false, diaRecorrente: null, data: new Date()
+    });
+  }
+
+  modalValorMeta.classList.add('escondido');
   salvar();
   renderizarTudo();
-}
+});
 
 // --- Modal de parabéns ao completar meta ---
 const modalParabensMeta = document.getElementById('modalParabensMeta');
@@ -1858,7 +1886,8 @@ function atualizarResumoMeses() {
     else grupos[chave].saidas += l.valor;
   });
 
-  const chaves = Object.keys(grupos).sort().reverse();
+  const chaveAtual = chaveMes(new Date());
+  const chaves = Object.keys(grupos).filter(c => c <= chaveAtual).sort().reverse();
 
   resumoMesesEl.innerHTML = '';
   resumoMesesVazioEl.classList.toggle('mostrar', chaves.length === 0);

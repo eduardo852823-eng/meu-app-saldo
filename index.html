@@ -185,6 +185,10 @@
           <select id="diaRecorrente" class="select-cat" style="margin-bottom:8px;">
             <!-- opções preenchidas via JS: dia 1 a 31 -->
           </select>
+          <label class="check-recorrente" style="margin-top:8px;">
+            <input type="checkbox" id="checkAplicarEsteMes" checked>
+            <span>Já aplicar esse mês também</span>
+          </label>
           <label class="campo-label">Por quantos meses repetir?</label>
           <input type="number" id="quantosMeses" placeholder="Ex: 12" min="1" max="60" value="6">
           <p class="campo-aviso" id="previewFimRecorrente" style="color:var(--blue-bright);font-weight:600;"></p>
@@ -412,7 +416,6 @@
           <div class="cores-grade" id="layoutGrade">
             <button class="cor-opcao layout-opcao" data-layout="padrao" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">📋</span>Padrão</button>
             <button class="cor-opcao layout-opcao" data-layout="poupix" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">🐷</span>PoupPix</button>
-            <button class="cor-opcao layout-opcao" data-layout="compacto" data-nivel="pro"><span style="background:none;box-shadow:none;font-size:20px;">📃</span>Compacto</button>
             <button class="cor-opcao layout-opcao" data-layout="moderno" data-nivel="pro"><span style="background:none;box-shadow:none;font-size:20px;">✨</span>Moderno</button>
             <button class="cor-opcao layout-opcao" data-layout="cards" data-nivel="ultimate"><span style="background:none;box-shadow:none;font-size:20px;">🗂️</span>Cards</button>
             <button class="cor-opcao layout-opcao" data-layout="neon" data-nivel="ultimate"><span style="background:none;box-shadow:none;font-size:20px;">🌐</span>Neon</button>
@@ -441,6 +444,16 @@
             <div class="sobre-nome">Economix</div>
             <div class="sobre-versao">Versão 1.0.0</div>
             <p class="sobre-texto" style="margin:0;max-width:100%;">Um app simples de controle de gastos e ganhos, feito para aprender e organizar a vida financeira.</p>
+            <div class="creditos-lista">
+              <div class="creditos-item">
+                <span class="creditos-nome">Eduardo Santos Nunes</span>
+                <span class="creditos-funcao">Programação e código do app</span>
+              </div>
+              <div class="creditos-item">
+                <span class="creditos-nome">Marcos Pitão Souza</span>
+                <span class="creditos-funcao">Backend e revisão do código</span>
+              </div>
+            </div>
           </div>
           <button id="btnReverTutorial" class="btn-ghost-sm" style="margin-top:16px;">Rever tutorial de boas-vindas</button>
         </div>
@@ -570,6 +583,18 @@
       <h1 id="detalhePlanoNome" style="font-size:18px;margin-bottom:14px;">Plano</h1>
       <ul id="detalhePlanoDescricao" class="detalhe-plano-lista"></ul>
       <button id="btnFecharDetalhePlano" class="btn-add" style="width:100%;margin-top:16px;">Entendi</button>
+    </div>
+  </div>
+
+  <!-- Modal de valor pra guardar/retirar de uma meta -->
+  <div class="modal-overlay escondido" id="modalValorMeta">
+    <div class="modal-card" style="max-width:300px;">
+      <h1 id="valorMetaTitulo" style="font-size:16px;margin-bottom:14px;">Valor</h1>
+      <form id="formValorMeta">
+        <input type="number" id="valorMetaInput" placeholder="R$ 0,00" step="0.01" min="0.01" autocomplete="off" required style="width:100%;margin-bottom:12px;">
+        <button type="submit" class="btn-add" style="width:100%;margin-bottom:8px;">Confirmar</button>
+      </form>
+      <button id="btnCancelarValorMeta" class="link-discreto">Cancelar</button>
     </div>
   </div>
 
