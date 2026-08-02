@@ -5,11 +5,20 @@ const cron = require('node-cron');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
+const rateLimit = require('express-rate-limit');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://economix.onrender.com',
+    'http://localhost:3000',
+    'capacitor://localhost',
+    null // apps PWA instalados às vezes mandam origin nula
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // ==============================
@@ -47,6 +56,7 @@ const usuarioSchema = new mongoose.Schema({
   senhaHash: String,
   googleId: String,
   token: String,
+  tokenExpira: Date,
   verificado: { type: Boolean, default: false },
   codigoVerificacao: String,
   codigoExpira: Date,
@@ -74,6 +84,11 @@ function gerarHash(senha, sal) {
 
 function gerarToken() {
   return crypto.randomBytes(24).toString('hex');
+}
+
+// Sessão válida por 30 dias
+function gerarValidadeToken() {
+  return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 }
 
 function gerarCodigo() {
@@ -119,9 +134,32 @@ async function autenticar(req, res, next) {
   const usuario = await Usuario.findOne({ token });
   if (!usuario) return res.status(401).json({ erro: 'Sessão inválida. Faça login de novo.' });
 
+  if (!usuario.tokenExpira || usuario.tokenExpira < new Date()) {
+    return res.status(401).json({ erro: 'Sessão expirada. Faça login de novo.' });
+  }
+
   req.usuario = usuario;
   next();
 }
+
+// ==============================
+// Limite de tentativas (evita força bruta em senha e código)
+// ==============================
+const limitadorLogin = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,
+  message: { erro: 'Muitas tentativas. Espera um pouco antes de tentar de novo.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const limitadorCodigo = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  message: { erro: 'Muitas tentativas de código. Espera um pouco antes de tentar de novo.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // ==============================
 // Rotas
@@ -177,7 +215,7 @@ app.post('/cadastro', async (req, res) => {
 });
 
 // Confirmar código de verificação
-app.post('/verificar-email', async (req, res) => {
+app.post('/verificar-email', limitadorCodigo, async (req, res) => {
   try {
     const { email, codigo } = req.body;
     if (!email || !codigo) return res.status(400).json({ erro: 'Preencha o código.' });
@@ -201,6 +239,7 @@ app.post('/verificar-email', async (req, res) => {
     usuario.codigoVerificacao = undefined;
     usuario.codigoExpira = undefined;
     usuario.token = gerarToken();
+    usuario.tokenExpira = gerarValidadeToken();
     await usuario.save();
 
     res.json({ token: usuario.token, nome: usuario.nome, email: usuario.email });
@@ -237,7 +276,7 @@ app.post('/reenviar-codigo', async (req, res) => {
 });
 
 // Login
-app.post('/login', async (req, res) => {
+app.post('/login', limitadorLogin, async (req, res) => {
   try {
     const { email, senha } = req.body;
     if (!email || !senha) {
@@ -259,6 +298,7 @@ app.post('/login', async (req, res) => {
     }
 
     usuario.token = gerarToken();
+    usuario.tokenExpira = gerarValidadeToken();
     await usuario.save();
 
     res.json({
@@ -295,11 +335,13 @@ app.post('/login-google', async (req, res) => {
         googleId: payload.sub,
         verificado: true,
         token: gerarToken(),
+        tokenExpira: gerarValidadeToken(),
         lancamentos: [],
         metaAlvo: null
       });
     } else {
       usuario.token = gerarToken();
+      usuario.tokenExpira = gerarValidadeToken();
       usuario.verificado = true;
       if (!usuario.googleId) usuario.googleId = payload.sub;
       await usuario.save();
@@ -309,6 +351,19 @@ app.post('/login-google', async (req, res) => {
   } catch (erro) {
     console.error('Erro no login com Google:', erro.message);
     res.status(400).json({ erro: 'Não foi possível verificar o login do Google.' });
+  }
+});
+
+// Logout — invalida o token no servidor, não só no aparelho
+app.post('/logout', autenticar, async (req, res) => {
+  try {
+    req.usuario.token = '';
+    req.usuario.tokenExpira = undefined;
+    await req.usuario.save();
+    res.json({ ok: true });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro no servidor ao sair.' });
   }
 });
 

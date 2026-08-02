@@ -661,8 +661,22 @@ configSideItens.forEach(item => {
   });
 });
 
-function confirmarSair() {
+async function confirmarSair() {
   if (!confirm('Isso vai sair da sua conta neste aparelho. Seus dados continuam salvos no servidor (se você tiver conta) e você pode entrar de novo quando quiser. Continuar?')) return;
+
+  // Invalida o token no servidor também, não só neste aparelho
+  if (tokenSessao) {
+    try {
+      await fetch(API_URL + '/logout', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + tokenSessao }
+      });
+    } catch (erro) {
+      // Se o servidor estiver fora do ar, segue com o logout local mesmo assim
+      console.error('Não foi possível avisar o servidor do logout:', erro);
+    }
+  }
+
   nomeUsuario = '';
   emailUsuario = '';
   fotoUsuario = '';
