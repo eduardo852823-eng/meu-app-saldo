@@ -529,6 +529,17 @@
   <div class="modal-overlay escondido" id="modalAcaoItem">
     <div class="modal-card" style="max-width:280px;padding:26px 22px;">
       <h1 id="acaoItemTitulo" style="font-size:16px;margin-bottom:18px;">Lançamento</h1>
+      <div class="confirmacao-pendente escondido" id="confirmacaoPendente">
+        <p id="confirmacaoTexto">Isso já caiu na conta?</p>
+        <div class="joinhas-row">
+          <button id="btnJoinhaSim" class="btn-joinha btn-joinha-sim" type="button">
+            <span>👍</span><span class="rotulo">Já caiu</span>
+          </button>
+          <button id="btnJoinhaNao" class="btn-joinha btn-joinha-nao" type="button">
+            <span>👎</span><span class="rotulo">Ainda não</span>
+          </button>
+        </div>
+      </div>
       <button id="btnAcaoEditar" class="btn-add" style="width:100%;margin-bottom:10px;">✎ Editar</button>
       <button id="btnAcaoExcluir" class="btn-add" style="width:100%;background:linear-gradient(135deg,#f87171,#b91c1c);box-shadow:0 4px 16px rgba(248,113,113,0.35);margin-bottom:10px;">✕ Excluir</button>
       <button id="btnAcaoCancelar" class="link-discreto">Cancelar</button>

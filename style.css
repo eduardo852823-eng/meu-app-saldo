@@ -325,40 +325,46 @@ input:focus {
   display: flex;
   background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 3px;
+  border-radius: 16px;
+  padding: 5px;
   flex: 1;
-  gap: 3px;
+  gap: 5px;
 }
 
 .tipo-btn {
   flex: 1;
   background: transparent;
-  border: none;
+  border: 2px solid transparent;
   color: var(--text-dim);
-  padding: 9px 8px;
-  border-radius: 9px;
+  padding: 15px 10px;
+  border-radius: 13px;
   font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 7px;
 }
 
-.tipo-btn .seta { font-size: 13px; }
+.tipo-btn .seta { font-size: 17px; }
 
 .tipo-saida.active {
-  background: rgba(248,113,113,0.15);
+  background: rgba(248,113,113,0.18);
   color: var(--red);
+  border-color: rgba(248,113,113,0.5);
+  box-shadow: 0 4px 14px rgba(248,113,113,0.25);
+  transform: scale(1.02);
 }
 
 .tipo-entrada.active {
-  background: rgba(34,211,238,0.15);
+  background: rgba(34,211,238,0.18);
   color: var(--cyan);
+  border-color: rgba(34,211,238,0.5);
+  box-shadow: 0 4px 14px rgba(34,211,238,0.25);
+  transform: scale(1.02);
 }
 
 .btn-add {
@@ -1185,6 +1191,62 @@ html[data-layout="cards"] .item-info { width: 100%; }
 
 .link-discreto:hover { color: var(--blue-bright); }
 .link-perigo:hover { color: var(--red); }
+
+.confirmacao-pendente {
+  margin-bottom: 14px;
+}
+
+.confirmacao-pendente p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.joinhas-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-joinha {
+  flex: 1;
+  border: 2px solid transparent;
+  border-radius: 13px;
+  padding: 14px 8px;
+  font-size: 26px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-joinha span.rotulo {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-body);
+}
+
+.btn-joinha-sim {
+  background: rgba(34,211,238,0.12);
+  color: var(--cyan);
+}
+.btn-joinha-sim:hover {
+  background: rgba(34,211,238,0.22);
+  border-color: rgba(34,211,238,0.5);
+  transform: scale(1.03);
+}
+
+.btn-joinha-nao {
+  background: rgba(248,113,113,0.12);
+  color: var(--red);
+}
+.btn-joinha-nao:hover {
+  background: rgba(248,113,113,0.22);
+  border-color: rgba(248,113,113,0.5);
+  transform: scale(1.03);
+}
 
 .rodape-sep { color: var(--line); font-size: 12px; }
 

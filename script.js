@@ -1607,11 +1607,24 @@ const acaoItemTitulo = document.getElementById('acaoItemTitulo');
 const btnAcaoEditar = document.getElementById('btnAcaoEditar');
 const btnAcaoExcluir = document.getElementById('btnAcaoExcluir');
 const btnAcaoCancelar = document.getElementById('btnAcaoCancelar');
+const confirmacaoPendente = document.getElementById('confirmacaoPendente');
+const confirmacaoTexto = document.getElementById('confirmacaoTexto');
+const btnJoinhaSim = document.getElementById('btnJoinhaSim');
+const btnJoinhaNao = document.getElementById('btnJoinhaNao');
 let itemAcaoAtual = null;
 
 function abrirAcaoItem(item) {
   itemAcaoAtual = item;
   acaoItemTitulo.textContent = item.descricao;
+
+  const pendente = itemPendente(item);
+  confirmacaoPendente.classList.toggle('escondido', !pendente);
+  if (pendente) {
+    confirmacaoTexto.textContent = item.tipo === 'entrada'
+      ? 'Esse dinheiro já caiu na sua conta?'
+      : 'Você já pagou/gastou isso?';
+  }
+
   modalAcaoItem.classList.remove('escondido');
 }
 
@@ -1622,6 +1635,18 @@ function fecharAcaoItem() {
 
 btnAcaoCancelar.addEventListener('click', fecharAcaoItem);
 modalAcaoItem.addEventListener('click', (e) => { if (e.target === modalAcaoItem) fecharAcaoItem(); });
+
+btnJoinhaSim.addEventListener('click', () => {
+  if (!itemAcaoAtual) return;
+  itemAcaoAtual.data = new Date();
+  salvar();
+  fecharAcaoItem();
+  renderizarTudo();
+});
+
+btnJoinhaNao.addEventListener('click', () => {
+  fecharAcaoItem();
+});
 
 btnAcaoEditar.addEventListener('click', () => {
   if (itemAcaoAtual) iniciarEdicao(itemAcaoAtual);
