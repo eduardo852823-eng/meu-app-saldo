@@ -318,17 +318,18 @@ input:focus {
 #valor { flex: 1; min-width: 0; }
 
 .form-row-tipo {
-  align-items: center;
+  align-items: stretch;
+  flex-direction: column;
 }
 
 .tipo-toggle {
   display: flex;
   background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 5px;
+  border-radius: 14px;
+  padding: 4px;
   flex: 1;
-  gap: 5px;
+  gap: 4px;
 }
 
 .tipo-btn {
@@ -336,17 +337,21 @@ input:focus {
   background: transparent;
   border: 2px solid transparent;
   color: var(--text-dim);
-  padding: 15px 10px;
-  border-radius: 13px;
+  padding: 10px 8px;
+  border-radius: 11px;
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   transition: all 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
+}
+
+.form-row-tipo .btn-add {
+  width: 100%;
 }
 
 .tipo-btn .seta { font-size: 17px; }
@@ -638,14 +643,11 @@ button { transition: transform 0.15s ease, box-shadow 0.25s ease, background 0.2
 .painel, .modal-card, .mes-card, .item, .plano-card { border-radius: 20px; }
 .tab-btn, .filtro-btn { border-radius: 12px; }
 
-/* PoupPix ocupa a largura máxima da tela e se ajusta */
+/* PoupPix agora usa a mesma largura do layout padrão (antes ficava mais largo) */
 html[data-layout="poupix"] .app {
-  max-width: 640px;
+  max-width: 480px;
   padding-left: 14px;
   padding-right: 14px;
-}
-@media (min-width: 700px) {
-  html[data-layout="poupix"] .app { max-width: 720px; }
 }
 @media (max-width: 420px) {
   html[data-layout="poupix"] .app { padding-left: 10px; padding-right: 10px; }
@@ -2404,6 +2406,97 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
   border-radius: 999px;
   margin-top: 3px;
   display: inline-block;
+}
+
+.item-tag-confirmado,
+.item-tag-pago {
+  color: #22c55e !important;
+  background: rgba(34,197,94,0.14) !important;
+  border-color: rgba(34,197,94,0.4) !important;
+  font-weight: 700;
+}
+
+.item-tag-divida {
+  color: var(--red) !important;
+  background: rgba(248,113,113,0.14) !important;
+  border-color: rgba(248,113,113,0.4) !important;
+  font-weight: 700;
+}
+
+.item.pago { border-left: 3px solid #22c55e; }
+.item.divida-pendente { border-left: 3px solid var(--red); }
+
+/* Checkbox "É uma dívida?" */
+.check-divida {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+  margin-top: 2px;
+}
+.check-divida input { width: 15px; height: 15px; accent-color: var(--red); }
+
+/* Créditos estilo Minecraft */
+.creditos-btn-animado {
+  margin-top: 10px;
+}
+.creditos-overlay {
+  position: fixed;
+  inset: 0;
+  background: #05070d;
+  z-index: 999;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+.creditos-overlay.escondido { display: none; }
+.creditos-fechar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: #fff;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+}
+.creditos-scroll {
+  position: absolute;
+  top: 100%;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  color: #e8eaf6;
+  padding: 0 24px;
+  animation: creditosSobem 22s linear forwards;
+}
+.creditos-scroll h2 {
+  font-size: 26px;
+  margin: 46px 0 8px;
+  color: var(--blue-bright);
+  letter-spacing: 1px;
+}
+.creditos-scroll .creditos-cargo {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.creditos-scroll .creditos-final {
+  margin-top: 60px;
+  font-size: 18px;
+  color: var(--cyan);
+}
+@keyframes creditosSobem {
+  from { transform: translateY(0); }
+  to { transform: translateY(-140%); }
 }
 
 /* Gráfico por categoria */

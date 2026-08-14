@@ -39,7 +39,10 @@ const lancamentoSchema = new mongoose.Schema({
   tipo: String,
   categoria: String,
   recorrente: Boolean,
-  data: Date
+  data: Date,
+  confirmado: Boolean,
+  divida: Boolean,
+  pago: Boolean
 }, { _id: false });
 
 const metaSchema = new mongoose.Schema({

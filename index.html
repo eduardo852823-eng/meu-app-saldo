@@ -176,6 +176,11 @@
           </button>
         </div>
 
+        <label class="check-divida" id="linhaDivida" style="display:none;">
+          <input type="checkbox" id="checkDivida">
+          <span>É uma dívida? (a gente pergunta depois se já foi paga)</span>
+        </label>
+
         <label class="check-recorrente" id="linhaRecorrente" style="display:none;">
           <input type="checkbox" id="checkRecorrente">
           <span>Repetir todo mês (gasto/ganho fixo)</span>
@@ -454,6 +459,7 @@
                 <span class="creditos-funcao">Backend e revisão do código</span>
               </div>
             </div>
+            <button id="btnVerCreditos" class="btn-ghost-sm creditos-btn-animado" type="button">▶ Ver créditos animados</button>
           </div>
           <button id="btnReverTutorial" class="btn-ghost-sm" style="margin-top:16px;">Rever tutorial de boas-vindas</button>
         </div>
@@ -543,6 +549,38 @@
       <button id="btnAcaoEditar" class="btn-add" style="width:100%;margin-bottom:10px;">✎ Editar</button>
       <button id="btnAcaoExcluir" class="btn-add" style="width:100%;background:linear-gradient(135deg,#f87171,#b91c1c);box-shadow:0 4px 16px rgba(248,113,113,0.35);margin-bottom:10px;">✕ Excluir</button>
       <button id="btnAcaoCancelar" class="link-discreto">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal de confirmação logo após adicionar (entrada caiu? dívida paga?) -->
+  <div class="modal-overlay escondido" id="modalConfirmarNovo">
+    <div class="modal-card" style="max-width:280px;padding:26px 22px;text-align:center;">
+      <p id="confirmarNovoTexto" style="margin-bottom:16px;font-weight:700;">—</p>
+      <div class="joinhas-row">
+        <button id="btnConfirmarNovoSim" class="btn-joinha btn-joinha-sim" type="button">
+          <span>👍</span><span class="rotulo">Já caiu / Paguei</span>
+        </button>
+        <button id="btnConfirmarNovoNao" class="btn-joinha btn-joinha-nao" type="button">
+          <span>👎</span><span class="rotulo">Ainda não</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Créditos estilo Minecraft -->
+  <div class="creditos-overlay escondido" id="creditosOverlay">
+    <button class="creditos-fechar" id="btnFecharCreditos" type="button">✕</button>
+    <div class="creditos-scroll" id="creditosScroll">
+      <h2>Economix</h2>
+      <div class="creditos-cargo">Controle de gastos e ganhos</div>
+
+      <h2 style="font-size:18px;margin-top:70px;">Programação e código do app</h2>
+      <div class="creditos-cargo" style="font-size:15px;color:#e8eaf6;letter-spacing:0;">Eduardo Santos Nunes</div>
+
+      <h2 style="font-size:18px;">Backend e revisão do código</h2>
+      <div class="creditos-cargo" style="font-size:15px;color:#e8eaf6;letter-spacing:0;">Marcos Pitão Souza</div>
+
+      <div class="creditos-final">Obrigado por usar o Economix 💜</div>
     </div>
   </div>
 

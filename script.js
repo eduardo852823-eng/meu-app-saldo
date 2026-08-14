@@ -66,6 +66,8 @@ const inputDesc = document.getElementById('descricao');
 const inputValor = document.getElementById('valor');
 const btnsTipo = document.querySelectorAll('.tipo-btn');
 const btnSubmit = document.getElementById('btnSubmit');
+const linhaDivida = document.getElementById('linhaDivida');
+const checkDivida = document.getElementById('checkDivida');
 const blocosMeses = document.getElementById('blocosMeses');
 const vazio = document.getElementById('vazio');
 const saldoTotalEl = document.getElementById('saldoTotal');
@@ -173,12 +175,13 @@ const btnTourProximo = document.getElementById('btnTourProximo');
 const btnTourFechar = document.getElementById('btnTourFechar');
 
 const PASSOS_TOUR = [
-  { seletor: '[data-tab="lancar"]', titulo: 'Lançar', texto: 'Aqui você anota o que gastou ou recebeu. Escolhe "Gastei" ou "Recebi" e clica em Adicionar.' },
-  { seletor: '[data-tab="meses"]', titulo: 'Meses', texto: 'Mostra se cada mês fechou no lucro ou no prejuízo, separadinho por período.' },
-  { seletor: '[data-tab="analise"]', titulo: 'Análise', texto: 'Suas metas de economia, comparação com o mês passado e maiores lançamentos.' },
-  { seletor: '[data-tab="fixos"]', titulo: 'Fixos', texto: 'Gerencie seus gastos e ganhos que se repetem todo mês, sem lotar sua tela.' },
-  { seletor: '#btnPerfil', titulo: 'Seu perfil', texto: 'Clica aqui pra ver sua conta, foto e data de criação.' },
-  { seletor: '#btnConfig', titulo: 'Configurações', texto: 'Aqui ficam plano, personalização, modo desenvolvedor e mais.' }
+  { seletor: '.hero', titulo: '👋 Bem-vindo ao Economix!', texto: 'Esse é o seu saldo: a soma de tudo que você já recebeu menos o que já gastou. Vamos dar uma volta rápida pelo app.' },
+  { seletor: '[data-tab="lancar"]', titulo: '➕ Lançar', texto: 'Aqui você anota o que gastou ou recebeu. Escolhe "Gastei" ou "Recebi", marca se é uma dívida quando for o caso, e clica em Adicionar.' },
+  { seletor: '[data-tab="meses"]', titulo: '📅 Meses', texto: 'Mostra se cada mês fechou no lucro ou no prejuízo, separadinho por período.' },
+  { seletor: '[data-tab="analise"]', titulo: '📊 Análise', texto: 'Suas metas de economia, comparação com o mês passado e os maiores lançamentos.' },
+  { seletor: '[data-tab="fixos"]', titulo: '🔁 Fixos', texto: 'Gerencie seus gastos e ganhos que se repetem todo mês, sem lotar sua tela.' },
+  { seletor: '#btnPerfil', titulo: '👤 Seu perfil', texto: 'Clica aqui pra ver sua conta, sua foto e a data de criação.' },
+  { seletor: '#btnConfig', titulo: '⚙️ Configurações', texto: 'Aqui ficam seu plano, a personalização visual, o modo desenvolvedor e mais. Você pode rever este tutorial quando quiser, aqui dentro.' }
 ];
 
 let passoTourAtual = 0;
@@ -249,6 +252,23 @@ function mostrarTutorialInicialSeNecessario() {
   tourOverlay.classList.remove('escondido');
   setTimeout(() => irParaPassoTour(0), 50);
 }
+
+// --- Créditos animados estilo Minecraft ---
+const creditosOverlay = document.getElementById('creditosOverlay');
+const creditosScroll = document.getElementById('creditosScroll');
+const btnVerCreditos = document.getElementById('btnVerCreditos');
+const btnFecharCreditos = document.getElementById('btnFecharCreditos');
+
+btnVerCreditos.addEventListener('click', () => {
+  creditosScroll.style.animation = 'none';
+  void creditosScroll.offsetWidth; // reinicia a animação toda vez que abre
+  creditosScroll.style.animation = '';
+  creditosOverlay.classList.remove('escondido');
+});
+
+btnFecharCreditos.addEventListener('click', () => {
+  creditosOverlay.classList.add('escondido');
+});
 
 document.getElementById('btnReverTutorial').addEventListener('click', () => {
   configFullscreen.classList.add('escondido');
@@ -1418,13 +1438,21 @@ function chaveMes(data) {
 }
 
 // --- Alternar tipo (Gastei / Recebi) ---
+function atualizarVisibilidadeDivida() {
+  const mostrar = tipoAtual === 'saida' && editandoId === null;
+  linhaDivida.style.display = mostrar ? 'flex' : 'none';
+  if (!mostrar) checkDivida.checked = false;
+}
+
 btnsTipo.forEach(btn => {
   btn.addEventListener('click', () => {
     btnsTipo.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     tipoAtual = btn.dataset.tipo;
+    atualizarVisibilidadeDivida();
   });
 });
+atualizarVisibilidadeDivida();
 
 // --- Filtros ---
 filtroBtns.forEach(btn => {
@@ -1450,6 +1478,8 @@ form.addEventListener('submit', (e) => {
     return;
   }
 
+  let itemRecemCriado = null;
+
   if (editandoId !== null) {
     const item = lancamentos.find(l => l.id === editandoId);
     if (item) {
@@ -1461,6 +1491,7 @@ form.addEventListener('submit', (e) => {
     sairModoEdicao();
   } else {
     const ehRecorrente = temRecurso('pro') && checkRecorrente.checked;
+    const ehDivida = tipoAtual === 'saida' && checkDivida.checked;
 
     if (ehRecorrente) {
       const dia = parseInt(diaRecorrenteSelect.value);
@@ -1488,7 +1519,7 @@ form.addEventListener('submit', (e) => {
         });
       }
     } else {
-      lancamentos.unshift({
+      itemRecemCriado = {
         id: Date.now(),
         descricao,
         valor,
@@ -1496,21 +1527,33 @@ form.addEventListener('submit', (e) => {
         categoria: temRecurso('pro') ? selectCat.value : '',
         recorrente: false,
         diaRecorrente: null,
-        data: new Date()
-      });
+        data: new Date(),
+        confirmado: tipoAtual === 'entrada' ? false : undefined,
+        divida: ehDivida || undefined,
+        pago: ehDivida ? false : undefined
+      };
+      lancamentos.unshift(itemRecemCriado);
     }
   }
 
   salvar();
   renderizarTudo();
   form.reset();
+  atualizarVisibilidadeDivida();
   inputDesc.focus();
+
+  if (itemRecemCriado && itemRecemCriado.tipo === 'entrada') {
+    abrirConfirmarNovo(itemRecemCriado, 'Esse dinheiro já caiu na sua conta?');
+  } else if (itemRecemCriado && itemRecemCriado.divida) {
+    abrirConfirmarNovo(itemRecemCriado, 'Você já pagou essa dívida?');
+  }
 });
 
 function sairModoEdicao() {
   editandoId = null;
   btnSubmit.querySelector('span').textContent = 'Adicionar';
   btnSubmit.classList.remove('editando-btn');
+  atualizarVisibilidadeDivida();
 }
 
 // --- Escapar HTML ---
@@ -1575,7 +1618,8 @@ function renderizarTudo() {
 function criarItemEl(item) {
   const li = document.createElement('li');
   const pendente = itemPendente(item);
-  li.className = `item ${item.tipo}${pendente ? ' pendente' : ''}`;
+  const statusClasse = item.divida ? (item.pago ? ' pago' : ' divida-pendente') : '';
+  li.className = `item ${item.tipo}${pendente ? ' pendente' : ''}${statusClasse}`;
   li.dataset.id = item.id;
 
   const cat = item.categoria ? CATEGORIAS[item.categoria] : null;
@@ -1586,12 +1630,21 @@ function criarItemEl(item) {
   const tagCat = cat ? `<span class="item-cat-tag">${cat.nome}</span>` : '';
   const tagPendente = pendente ? `<span class="item-cat-tag item-tag-pendente">🕒 Agendado</span>` : '';
 
+  let tagStatus = '';
+  if (item.divida) {
+    tagStatus = item.pago
+      ? `<span class="item-cat-tag item-tag-pago">👍 Dívida paga</span>`
+      : `<span class="item-cat-tag item-tag-divida">🕒 Dívida não paga</span>`;
+  } else if (item.tipo === 'entrada' && item.confirmado === true) {
+    tagStatus = `<span class="item-cat-tag item-tag-confirmado">👍 Já caiu</span>`;
+  }
+
   li.innerHTML = `
     <div class="item-icone">${icone}</div>
     <div class="item-info">
       <div class="item-desc">${escapeHTML(item.descricao)}</div>
       <div class="item-data">${dataFormatada}</div>
-      ${tagCat}${tagRecorrente}${tagPendente}
+      ${tagCat}${tagRecorrente}${tagPendente}${tagStatus}
     </div>
     <div class="item-valor">${sinal} ${formatarMoeda(item.valor)}</div>
   `;
@@ -1617,12 +1670,16 @@ function abrirAcaoItem(item) {
   itemAcaoAtual = item;
   acaoItemTitulo.textContent = item.descricao;
 
-  const pendente = itemPendente(item);
-  confirmacaoPendente.classList.toggle('escondido', !pendente);
-  if (pendente) {
-    confirmacaoTexto.textContent = item.tipo === 'entrada'
-      ? 'Esse dinheiro já caiu na sua conta?'
-      : 'Você já pagou/gastou isso?';
+  const pendenteData = itemPendente(item);
+  const precisaConfirmarEntrada = item.tipo === 'entrada' && item.confirmado === false;
+  const precisaConfirmarDivida = !!item.divida && !item.pago;
+  const mostrarConfirmacao = pendenteData || precisaConfirmarEntrada || precisaConfirmarDivida;
+
+  confirmacaoPendente.classList.toggle('escondido', !mostrarConfirmacao);
+  if (mostrarConfirmacao) {
+    confirmacaoTexto.textContent = precisaConfirmarDivida
+      ? 'Você já pagou essa dívida?'
+      : (item.tipo === 'entrada' ? 'Esse dinheiro já caiu na sua conta?' : 'Você já pagou/gastou isso?');
   }
 
   modalAcaoItem.classList.remove('escondido');
@@ -1638,15 +1695,65 @@ modalAcaoItem.addEventListener('click', (e) => { if (e.target === modalAcaoItem)
 
 btnJoinhaSim.addEventListener('click', () => {
   if (!itemAcaoAtual) return;
-  itemAcaoAtual.data = new Date();
+  if (itemAcaoAtual.divida) {
+    itemAcaoAtual.pago = true;
+  } else if (itemAcaoAtual.tipo === 'entrada') {
+    itemAcaoAtual.confirmado = true;
+    if (itemPendente(itemAcaoAtual)) itemAcaoAtual.data = new Date();
+  } else {
+    itemAcaoAtual.data = new Date();
+  }
   salvar();
   fecharAcaoItem();
   renderizarTudo();
 });
 
 btnJoinhaNao.addEventListener('click', () => {
+  if (itemAcaoAtual) {
+    if (itemAcaoAtual.divida) itemAcaoAtual.pago = false;
+    else if (itemAcaoAtual.tipo === 'entrada') itemAcaoAtual.confirmado = false;
+    salvar();
+  }
   fecharAcaoItem();
 });
+
+// --- Modal de confirmação logo após adicionar (entrada / dívida) ---
+const modalConfirmarNovo = document.getElementById('modalConfirmarNovo');
+const confirmarNovoTexto = document.getElementById('confirmarNovoTexto');
+const btnConfirmarNovoSim = document.getElementById('btnConfirmarNovoSim');
+const btnConfirmarNovoNao = document.getElementById('btnConfirmarNovoNao');
+let itemConfirmarNovoAtual = null;
+
+function abrirConfirmarNovo(item, texto) {
+  itemConfirmarNovoAtual = item;
+  confirmarNovoTexto.textContent = texto;
+  modalConfirmarNovo.classList.remove('escondido');
+}
+
+function fecharConfirmarNovo() {
+  modalConfirmarNovo.classList.add('escondido');
+  itemConfirmarNovoAtual = null;
+}
+
+btnConfirmarNovoSim.addEventListener('click', () => {
+  if (!itemConfirmarNovoAtual) return;
+  if (itemConfirmarNovoAtual.divida) itemConfirmarNovoAtual.pago = true;
+  else if (itemConfirmarNovoAtual.tipo === 'entrada') itemConfirmarNovoAtual.confirmado = true;
+  salvar();
+  renderizarTudo();
+  fecharConfirmarNovo();
+});
+
+btnConfirmarNovoNao.addEventListener('click', () => {
+  if (!itemConfirmarNovoAtual) return;
+  if (itemConfirmarNovoAtual.divida) itemConfirmarNovoAtual.pago = false;
+  else if (itemConfirmarNovoAtual.tipo === 'entrada') itemConfirmarNovoAtual.confirmado = false;
+  salvar();
+  renderizarTudo();
+  fecharConfirmarNovo();
+});
+
+modalConfirmarNovo.addEventListener('click', (e) => { if (e.target === modalConfirmarNovo) fecharConfirmarNovo(); });
 
 btnAcaoEditar.addEventListener('click', () => {
   if (itemAcaoAtual) iniciarEdicao(itemAcaoAtual);
@@ -1670,6 +1777,7 @@ function iniciarEdicao(item) {
   btnsTipo.forEach(b => b.classList.toggle('active', b.dataset.tipo === item.tipo));
   tipoAtual = item.tipo;
   btnSubmit.querySelector('span').textContent = 'Salvar edição';
+  atualizarVisibilidadeDivida();
   inputDesc.focus();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
