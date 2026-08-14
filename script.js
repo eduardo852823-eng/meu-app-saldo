@@ -412,8 +412,17 @@ function itemPendente(item) {
   return dataItem > agora;
 }
 
+// --- Verifica se um lançamento ainda não deve contar no saldo:
+// agendado pra data futura, entrada ainda não confirmada, ou dívida ainda não paga ---
+function itemForaDoSaldo(item) {
+  if (itemPendente(item)) return true;
+  if (item.tipo === 'entrada' && item.confirmado === false) return true;
+  if (item.divida && !item.pago) return true;
+  return false;
+}
+
 function lancamentosAtivos() {
-  return lancamentos.filter(l => !itemPendente(l));
+  return lancamentos.filter(l => !itemForaDoSaldo(l));
 }
 
 // --- Persistência (localStorage, funciona offline, sem precisar de servidor/domínio) ---
@@ -1618,8 +1627,9 @@ function renderizarTudo() {
 function criarItemEl(item) {
   const li = document.createElement('li');
   const pendente = itemPendente(item);
+  const foraDoSaldo = itemForaDoSaldo(item);
   const statusClasse = item.divida ? (item.pago ? ' pago' : ' divida-pendente') : '';
-  li.className = `item ${item.tipo}${pendente ? ' pendente' : ''}${statusClasse}`;
+  li.className = `item ${item.tipo}${pendente ? ' pendente' : ''}${foraDoSaldo ? ' aguardando' : ''}${statusClasse}`;
   li.dataset.id = item.id;
 
   const cat = item.categoria ? CATEGORIAS[item.categoria] : null;
@@ -1633,10 +1643,12 @@ function criarItemEl(item) {
   let tagStatus = '';
   if (item.divida) {
     tagStatus = item.pago
-      ? `<span class="item-cat-tag item-tag-pago">👍 Dívida paga</span>`
-      : `<span class="item-cat-tag item-tag-divida">🕒 Dívida não paga</span>`;
+      ? `<span class="item-cat-tag item-tag-pago">👍 Já paguei</span>`
+      : `<span class="item-cat-tag item-tag-divida">🕒 Ainda não paguei · não entra no saldo</span>`;
   } else if (item.tipo === 'entrada' && item.confirmado === true) {
     tagStatus = `<span class="item-cat-tag item-tag-confirmado">👍 Já caiu</span>`;
+  } else if (item.tipo === 'entrada' && item.confirmado === false) {
+    tagStatus = `<span class="item-cat-tag item-tag-pendente">🕒 Ainda não caiu · não entra no saldo</span>`;
   }
 
   li.innerHTML = `
@@ -1664,6 +1676,8 @@ const confirmacaoPendente = document.getElementById('confirmacaoPendente');
 const confirmacaoTexto = document.getElementById('confirmacaoTexto');
 const btnJoinhaSim = document.getElementById('btnJoinhaSim');
 const btnJoinhaNao = document.getElementById('btnJoinhaNao');
+const rotuloJoinhaSim = btnJoinhaSim.querySelector('.rotulo');
+const rotuloJoinhaNao = btnJoinhaNao.querySelector('.rotulo');
 let itemAcaoAtual = null;
 
 function abrirAcaoItem(item) {
@@ -1677,9 +1691,19 @@ function abrirAcaoItem(item) {
 
   confirmacaoPendente.classList.toggle('escondido', !mostrarConfirmacao);
   if (mostrarConfirmacao) {
-    confirmacaoTexto.textContent = precisaConfirmarDivida
-      ? 'Você já pagou essa dívida?'
-      : (item.tipo === 'entrada' ? 'Esse dinheiro já caiu na sua conta?' : 'Você já pagou/gastou isso?');
+    if (precisaConfirmarDivida) {
+      confirmacaoTexto.textContent = 'Você já pagou essa dívida?';
+      rotuloJoinhaSim.textContent = 'Já paguei';
+      rotuloJoinhaNao.textContent = 'Ainda não paguei';
+    } else if (item.tipo === 'entrada') {
+      confirmacaoTexto.textContent = 'Esse dinheiro já caiu na sua conta?';
+      rotuloJoinhaSim.textContent = 'Já caiu';
+      rotuloJoinhaNao.textContent = 'Ainda não caiu';
+    } else {
+      confirmacaoTexto.textContent = 'Você já pagou/gastou isso?';
+      rotuloJoinhaSim.textContent = 'Já paguei';
+      rotuloJoinhaNao.textContent = 'Ainda não';
+    }
   }
 
   modalAcaoItem.classList.remove('escondido');
@@ -1715,6 +1739,7 @@ btnJoinhaNao.addEventListener('click', () => {
     salvar();
   }
   fecharAcaoItem();
+  renderizarTudo();
 });
 
 // --- Modal de confirmação logo após adicionar (entrada / dívida) ---
@@ -1722,11 +1747,20 @@ const modalConfirmarNovo = document.getElementById('modalConfirmarNovo');
 const confirmarNovoTexto = document.getElementById('confirmarNovoTexto');
 const btnConfirmarNovoSim = document.getElementById('btnConfirmarNovoSim');
 const btnConfirmarNovoNao = document.getElementById('btnConfirmarNovoNao');
+const rotuloConfirmarNovoSim = btnConfirmarNovoSim.querySelector('.rotulo');
+const rotuloConfirmarNovoNao = btnConfirmarNovoNao.querySelector('.rotulo');
 let itemConfirmarNovoAtual = null;
 
 function abrirConfirmarNovo(item, texto) {
   itemConfirmarNovoAtual = item;
   confirmarNovoTexto.textContent = texto;
+  if (item.divida) {
+    rotuloConfirmarNovoSim.textContent = 'Já paguei';
+    rotuloConfirmarNovoNao.textContent = 'Ainda não paguei';
+  } else {
+    rotuloConfirmarNovoSim.textContent = 'Já caiu';
+    rotuloConfirmarNovoNao.textContent = 'Ainda não caiu';
+  }
   modalConfirmarNovo.classList.remove('escondido');
 }
 

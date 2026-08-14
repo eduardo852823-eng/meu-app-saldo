@@ -1838,7 +1838,7 @@ html[data-cor="rgb"] {
 #blocosMeses::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
 
 /* Item pendente (agendado, ainda não conta no saldo) */
-.item.pendente { opacity: 0.55; }
+.item.pendente, .item.aguardando { opacity: 0.55; }
 .item-tag-pendente { color: var(--blue-bright) !important; border-color: var(--blue-bright) !important; }
 
 /* Status do mês (ainda lançando) */
