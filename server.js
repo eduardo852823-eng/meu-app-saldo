@@ -10,13 +10,18 @@ const rateLimit = require('express-rate-limit');
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
+// Observação: origin "null" foi removida de propósito. Ela é usada por
+// iframes/páginas sandboxed e permitir isso com credentials:true abre
+// brecha pra ataques tipo CSRF (qualquer página maliciosa poderia mandar
+// requisição autenticada). Se o login pelo app instalado (PWA) realmente
+// precisar disso, o correto é identificar a origem real que ele manda
+// (geralmente é o mesmo domínio do app) em vez de liberar "null" geral.
 app.use(cors({
   origin: [
     'https://economix.onrender.com',
     'https://eduardo852823-eng.github.io', // onde o app está publicado (GitHub Pages)
     'http://localhost:3000',
-    'capacitor://localhost',
-    null // apps PWA instalados às vezes mandam origin nula
+    'capacitor://localhost'
   ],
   credentials: true
 }));
@@ -40,9 +45,7 @@ const lancamentoSchema = new mongoose.Schema({
   categoria: String,
   recorrente: Boolean,
   data: Date,
-  confirmado: Boolean,
-  divida: Boolean,
-  pago: Boolean
+  confirmado: Boolean
 }, { _id: false });
 
 const metaSchema = new mongoose.Schema({
@@ -81,9 +84,35 @@ const Usuario = mongoose.model('Usuario', usuarioSchema);
 
 // ==============================
 // Senha: hash com sal (nunca guardamos a senha em texto puro)
+//
+// Usamos scrypt (nativo do Node) em vez de um SHA-256 simples: SHA-256
+// é rápido demais, o que facilita testar bilhões de senhas por segundo
+// em caso de vazamento do banco. scrypt é "lento de propósito" e usa
+// bastante memória, o que torna esse tipo de ataque muito mais caro.
+//
+// Contas criadas antes dessa mudança ainda têm hash no formato antigo
+// (sha256 puro, sem prefixo). Continuamos aceitando login nelas e, na
+// hora que a pessoa entra com sucesso, atualizamos o hash dela pra
+// scrypt automaticamente — sem precisar pedir pra trocar a senha.
 // ==============================
 function gerarHash(senha, sal) {
+  const hash = crypto.scryptSync(senha, sal, 64).toString('hex');
+  return `scrypt:${hash}`;
+}
+
+function gerarHashAntigo(senha, sal) {
   return crypto.createHash('sha256').update(senha + sal).digest('hex');
+}
+
+function senhaConfere(senha, sal, hashSalvo) {
+  if (!hashSalvo) return false;
+  if (hashSalvo.startsWith('scrypt:')) {
+    const calculado = Buffer.from(gerarHash(senha, sal));
+    const salvo = Buffer.from(hashSalvo);
+    return calculado.length === salvo.length && crypto.timingSafeEqual(calculado, salvo);
+  }
+  // formato antigo (contas de antes da migração pra scrypt)
+  return gerarHashAntigo(senha, sal) === hashSalvo;
 }
 
 function gerarToken() {
@@ -174,7 +203,7 @@ app.get('/', (req, res) => {
 });
 
 // Cadastro
-app.post('/cadastro', async (req, res) => {
+app.post('/cadastro', limitadorLogin, async (req, res) => {
   try {
     const { nome, email, senha } = req.body;
     if (!nome || !email || !senha) {
@@ -254,7 +283,7 @@ app.post('/verificar-email', limitadorCodigo, async (req, res) => {
 });
 
 // Reenviar código de verificação
-app.post('/reenviar-codigo', async (req, res) => {
+app.post('/reenviar-codigo', limitadorCodigo, async (req, res) => {
   try {
     const { email } = req.body;
     const usuario = await Usuario.findOne({ email: email?.toLowerCase() });
@@ -296,9 +325,13 @@ app.post('/login', limitadorLogin, async (req, res) => {
       return res.status(400).json({ erro: 'Confirma seu e-mail antes de entrar.', precisaVerificar: true, email: usuario.email });
     }
 
-    const hashDigitado = gerarHash(senha, usuario.sal);
-    if (hashDigitado !== usuario.senhaHash) {
+    if (!senhaConfere(senha, usuario.sal, usuario.senhaHash)) {
       return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
+    }
+
+    // Login certo com hash no formato antigo -> aproveita e já migra pro novo
+    if (!usuario.senhaHash.startsWith('scrypt:')) {
+      usuario.senhaHash = gerarHash(senha, usuario.sal);
     }
 
     usuario.token = gerarToken();

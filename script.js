@@ -66,8 +66,6 @@ const inputDesc = document.getElementById('descricao');
 const inputValor = document.getElementById('valor');
 const btnsTipo = document.querySelectorAll('.tipo-btn');
 const btnSubmit = document.getElementById('btnSubmit');
-const linhaDivida = document.getElementById('linhaDivida');
-const checkDivida = document.getElementById('checkDivida');
 const blocosMeses = document.getElementById('blocosMeses');
 const vazio = document.getElementById('vazio');
 const saldoTotalEl = document.getElementById('saldoTotal');
@@ -413,11 +411,10 @@ function itemPendente(item) {
 }
 
 // --- Verifica se um lançamento ainda não deve contar no saldo:
-// agendado pra data futura, entrada ainda não confirmada, ou dívida ainda não paga ---
+// agendado pra data futura, ou ainda não confirmado (não caiu / não foi pago) ---
 function itemForaDoSaldo(item) {
   if (itemPendente(item)) return true;
-  if (item.tipo === 'entrada' && item.confirmado === false) return true;
-  if (item.divida && !item.pago) return true;
+  if (item.confirmado === false) return true;
   return false;
 }
 
@@ -446,7 +443,7 @@ function salvar() {
   } catch (e) {
     console.warn('Não foi possível salvar os dados localmente.', e);
   }
-  sincronizarComServidor();
+  agendarSincronizacao();
 }
 
 function carregar() {
@@ -1258,8 +1255,38 @@ window.addEventListener('resize', () => {
 if (window.googleCarregou) iniciarBotaoGoogle();
 
 // --- Sincronizar com o servidor (se logado) ---
+//
+// 3 correções aqui em relação ao original:
+// 1) Debounce: antes, cada mudança disparava uma requisição na hora. Se
+//    você fizesse várias ações rápidas (marcar 3 dívidas seguidas, por
+//    exemplo), isso virava um monte de requisições ao mesmo tempo.
+// 2) Cancelamento da requisição anterior: como as respostas podem chegar
+//    fora de ordem, uma resposta "atrasada" de uma sincronização antiga
+//    podia, na teoria, ser a última a valer e sobrescrever dados mais
+//    novos. Agora, ao começar uma sincronização nova, a anterior (se
+//    ainda estiver rodando) é cancelada.
+// 3) Retry: antes, se a sincronização falhasse (sem internet, por
+//    exemplo), a alteração ficava só salva no aparelho e nunca mais era
+//    reenviada pro servidor — ou seja, sumia ao trocar de dispositivo.
+//    Agora, se falhar, tenta de novo automaticamente mais tarde e assim
+//    que a internet voltar.
+let timerSincronizacao = null;
+let controllerSincronizacao = null;
+let retrySincronizacao = null;
+
+function agendarSincronizacao() {
+  if (!tokenSessao) return;
+  clearTimeout(timerSincronizacao);
+  timerSincronizacao = setTimeout(sincronizarComServidor, 600);
+}
+
 async function sincronizarComServidor() {
   if (!tokenSessao) return;
+
+  if (controllerSincronizacao) controllerSincronizacao.abort();
+  controllerSincronizacao = new AbortController();
+  clearTimeout(retrySincronizacao);
+
   try {
     await fetch(API_URL + '/dados', {
       method: 'POST',
@@ -1267,12 +1294,17 @@ async function sincronizarComServidor() {
         'Content-Type': 'application/json',
         Authorization: 'Bearer ' + tokenSessao
       },
-      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo, corEscolhida, limiteGasto, metas, corLivreHex, layoutAtual })
+      body: JSON.stringify({ lancamentos, metaAlvo, foto: fotoUsuario, planoAtual, devAtivo, corEscolhida, limiteGasto, metas, corLivreHex, layoutAtual }),
+      signal: controllerSincronizacao.signal
     });
   } catch (erro) {
-    console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho).', erro);
+    if (erro.name === 'AbortError') return; // cancelada por uma sincronização mais nova, sem problema
+    console.warn('Não consegui sincronizar com o servidor agora (dados continuam salvos neste aparelho). Vou tentar de novo em instantes.', erro);
+    retrySincronizacao = setTimeout(sincronizarComServidor, 8000);
   }
 }
+
+window.addEventListener('online', () => { if (tokenSessao) sincronizarComServidor(); });
 
 // --- Mostrar/ocultar senha no login ---
 btnMostrarSenha.addEventListener('click', () => {
@@ -1447,21 +1479,13 @@ function chaveMes(data) {
 }
 
 // --- Alternar tipo (Gastei / Recebi) ---
-function atualizarVisibilidadeDivida() {
-  const mostrar = tipoAtual === 'saida' && editandoId === null;
-  linhaDivida.style.display = mostrar ? 'flex' : 'none';
-  if (!mostrar) checkDivida.checked = false;
-}
-
 btnsTipo.forEach(btn => {
   btn.addEventListener('click', () => {
     btnsTipo.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     tipoAtual = btn.dataset.tipo;
-    atualizarVisibilidadeDivida();
   });
 });
-atualizarVisibilidadeDivida();
 
 // --- Filtros ---
 filtroBtns.forEach(btn => {
@@ -1500,7 +1524,6 @@ form.addEventListener('submit', (e) => {
     sairModoEdicao();
   } else {
     const ehRecorrente = temRecurso('pro') && checkRecorrente.checked;
-    const ehDivida = tipoAtual === 'saida' && checkDivida.checked;
 
     if (ehRecorrente) {
       const dia = parseInt(diaRecorrenteSelect.value);
@@ -1537,9 +1560,7 @@ form.addEventListener('submit', (e) => {
         recorrente: false,
         diaRecorrente: null,
         data: new Date(),
-        confirmado: tipoAtual === 'entrada' ? false : undefined,
-        divida: ehDivida || undefined,
-        pago: ehDivida ? false : undefined
+        confirmado: false
       };
       lancamentos.unshift(itemRecemCriado);
     }
@@ -1548,13 +1569,13 @@ form.addEventListener('submit', (e) => {
   salvar();
   renderizarTudo();
   form.reset();
-  atualizarVisibilidadeDivida();
   inputDesc.focus();
 
-  if (itemRecemCriado && itemRecemCriado.tipo === 'entrada') {
-    abrirConfirmarNovo(itemRecemCriado, 'Esse dinheiro já caiu na sua conta?');
-  } else if (itemRecemCriado && itemRecemCriado.divida) {
-    abrirConfirmarNovo(itemRecemCriado, 'Você já pagou essa dívida?');
+  if (itemRecemCriado) {
+    const texto = itemRecemCriado.tipo === 'entrada'
+      ? 'Esse dinheiro já caiu na sua conta?'
+      : 'Você já pagou isso?';
+    abrirConfirmarNovo(itemRecemCriado, texto);
   }
 });
 
@@ -1562,7 +1583,6 @@ function sairModoEdicao() {
   editandoId = null;
   btnSubmit.querySelector('span').textContent = 'Adicionar';
   btnSubmit.classList.remove('editando-btn');
-  atualizarVisibilidadeDivida();
 }
 
 // --- Escapar HTML ---
@@ -1628,7 +1648,7 @@ function criarItemEl(item) {
   const li = document.createElement('li');
   const pendente = itemPendente(item);
   const foraDoSaldo = itemForaDoSaldo(item);
-  const statusClasse = item.divida ? (item.pago ? ' pago' : ' divida-pendente') : '';
+  const statusClasse = item.confirmado === true ? ' pago' : (item.confirmado === false ? ' divida-pendente' : '');
   li.className = `item ${item.tipo}${pendente ? ' pendente' : ''}${foraDoSaldo ? ' aguardando' : ''}${statusClasse}`;
   li.dataset.id = item.id;
 
@@ -1641,14 +1661,14 @@ function criarItemEl(item) {
   const tagPendente = pendente ? `<span class="item-cat-tag item-tag-pendente">🕒 Agendado</span>` : '';
 
   let tagStatus = '';
-  if (item.divida) {
-    tagStatus = item.pago
-      ? `<span class="item-cat-tag item-tag-pago">👍 Já paguei</span>`
+  if (item.confirmado === true) {
+    tagStatus = item.tipo === 'entrada'
+      ? `<span class="item-cat-tag item-tag-confirmado">👍 Já caiu</span>`
+      : `<span class="item-cat-tag item-tag-pago">👍 Já paguei</span>`;
+  } else if (item.confirmado === false) {
+    tagStatus = item.tipo === 'entrada'
+      ? `<span class="item-cat-tag item-tag-pendente">🕒 Ainda não caiu · não entra no saldo</span>`
       : `<span class="item-cat-tag item-tag-divida">🕒 Ainda não paguei · não entra no saldo</span>`;
-  } else if (item.tipo === 'entrada' && item.confirmado === true) {
-    tagStatus = `<span class="item-cat-tag item-tag-confirmado">👍 Já caiu</span>`;
-  } else if (item.tipo === 'entrada' && item.confirmado === false) {
-    tagStatus = `<span class="item-cat-tag item-tag-pendente">🕒 Ainda não caiu · não entra no saldo</span>`;
   }
 
   li.innerHTML = `
@@ -1680,30 +1700,31 @@ const rotuloJoinhaSim = btnJoinhaSim.querySelector('.rotulo');
 const rotuloJoinhaNao = btnJoinhaNao.querySelector('.rotulo');
 let itemAcaoAtual = null;
 
+// Textos do joinha, de acordo com o tipo do lançamento
+function textosJoinha(item) {
+  return item.tipo === 'entrada'
+    ? { pergunta: 'Esse dinheiro já caiu na sua conta?', sim: 'Já caiu', nao: 'Ainda não caiu' }
+    : { pergunta: 'Você já pagou isso?', sim: 'Já paguei', nao: 'Ainda não paguei' };
+}
+
 function abrirAcaoItem(item) {
   itemAcaoAtual = item;
   acaoItemTitulo.textContent = item.descricao;
 
   const pendenteData = itemPendente(item);
-  const precisaConfirmarEntrada = item.tipo === 'entrada' && item.confirmado === false;
-  const precisaConfirmarDivida = !!item.divida && !item.pago;
-  const mostrarConfirmacao = pendenteData || precisaConfirmarEntrada || precisaConfirmarDivida;
+  // participa do fluxo de confirmação (já caiu/já paguei) sempre que o item tiver esse status definido
+  const participaConfirmacao = item.confirmado !== undefined;
+  const mostrarConfirmacao = pendenteData || participaConfirmacao;
 
   confirmacaoPendente.classList.toggle('escondido', !mostrarConfirmacao);
   if (mostrarConfirmacao) {
-    if (precisaConfirmarDivida) {
-      confirmacaoTexto.textContent = 'Você já pagou essa dívida?';
-      rotuloJoinhaSim.textContent = 'Já paguei';
-      rotuloJoinhaNao.textContent = 'Ainda não paguei';
-    } else if (item.tipo === 'entrada') {
-      confirmacaoTexto.textContent = 'Esse dinheiro já caiu na sua conta?';
-      rotuloJoinhaSim.textContent = 'Já caiu';
-      rotuloJoinhaNao.textContent = 'Ainda não caiu';
-    } else {
-      confirmacaoTexto.textContent = 'Você já pagou/gastou isso?';
-      rotuloJoinhaSim.textContent = 'Já paguei';
-      rotuloJoinhaNao.textContent = 'Ainda não';
-    }
+    const t = textosJoinha(item);
+    confirmacaoTexto.textContent = t.pergunta;
+    rotuloJoinhaSim.textContent = t.sim;
+    rotuloJoinhaNao.textContent = t.nao;
+    // destaca visualmente qual é o status atual desse lançamento
+    btnJoinhaSim.classList.toggle('joinha-atual', item.confirmado === true);
+    btnJoinhaNao.classList.toggle('joinha-atual', item.confirmado === false);
   }
 
   modalAcaoItem.classList.remove('escondido');
@@ -1719,9 +1740,7 @@ modalAcaoItem.addEventListener('click', (e) => { if (e.target === modalAcaoItem)
 
 btnJoinhaSim.addEventListener('click', () => {
   if (!itemAcaoAtual) return;
-  if (itemAcaoAtual.divida) {
-    itemAcaoAtual.pago = true;
-  } else if (itemAcaoAtual.tipo === 'entrada') {
+  if (itemAcaoAtual.confirmado !== undefined) {
     itemAcaoAtual.confirmado = true;
     if (itemPendente(itemAcaoAtual)) itemAcaoAtual.data = new Date();
   } else {
@@ -1733,16 +1752,15 @@ btnJoinhaSim.addEventListener('click', () => {
 });
 
 btnJoinhaNao.addEventListener('click', () => {
-  if (itemAcaoAtual) {
-    if (itemAcaoAtual.divida) itemAcaoAtual.pago = false;
-    else if (itemAcaoAtual.tipo === 'entrada') itemAcaoAtual.confirmado = false;
+  if (itemAcaoAtual && itemAcaoAtual.confirmado !== undefined) {
+    itemAcaoAtual.confirmado = false;
     salvar();
   }
   fecharAcaoItem();
   renderizarTudo();
 });
 
-// --- Modal de confirmação logo após adicionar (entrada / dívida) ---
+// --- Modal de confirmação logo após adicionar (entrada / saída) ---
 const modalConfirmarNovo = document.getElementById('modalConfirmarNovo');
 const confirmarNovoTexto = document.getElementById('confirmarNovoTexto');
 const btnConfirmarNovoSim = document.getElementById('btnConfirmarNovoSim');
@@ -1754,13 +1772,9 @@ let itemConfirmarNovoAtual = null;
 function abrirConfirmarNovo(item, texto) {
   itemConfirmarNovoAtual = item;
   confirmarNovoTexto.textContent = texto;
-  if (item.divida) {
-    rotuloConfirmarNovoSim.textContent = 'Já paguei';
-    rotuloConfirmarNovoNao.textContent = 'Ainda não paguei';
-  } else {
-    rotuloConfirmarNovoSim.textContent = 'Já caiu';
-    rotuloConfirmarNovoNao.textContent = 'Ainda não caiu';
-  }
+  const t = textosJoinha(item);
+  rotuloConfirmarNovoSim.textContent = t.sim;
+  rotuloConfirmarNovoNao.textContent = t.nao;
   modalConfirmarNovo.classList.remove('escondido');
 }
 
@@ -1771,8 +1785,7 @@ function fecharConfirmarNovo() {
 
 btnConfirmarNovoSim.addEventListener('click', () => {
   if (!itemConfirmarNovoAtual) return;
-  if (itemConfirmarNovoAtual.divida) itemConfirmarNovoAtual.pago = true;
-  else if (itemConfirmarNovoAtual.tipo === 'entrada') itemConfirmarNovoAtual.confirmado = true;
+  itemConfirmarNovoAtual.confirmado = true;
   salvar();
   renderizarTudo();
   fecharConfirmarNovo();
@@ -1780,8 +1793,7 @@ btnConfirmarNovoSim.addEventListener('click', () => {
 
 btnConfirmarNovoNao.addEventListener('click', () => {
   if (!itemConfirmarNovoAtual) return;
-  if (itemConfirmarNovoAtual.divida) itemConfirmarNovoAtual.pago = false;
-  else if (itemConfirmarNovoAtual.tipo === 'entrada') itemConfirmarNovoAtual.confirmado = false;
+  itemConfirmarNovoAtual.confirmado = false;
   salvar();
   renderizarTudo();
   fecharConfirmarNovo();
@@ -1811,7 +1823,6 @@ function iniciarEdicao(item) {
   btnsTipo.forEach(b => b.classList.toggle('active', b.dataset.tipo === item.tipo));
   tipoAtual = item.tipo;
   btnSubmit.querySelector('span').textContent = 'Salvar edição';
-  atualizarVisibilidadeDivida();
   inputDesc.focus();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
