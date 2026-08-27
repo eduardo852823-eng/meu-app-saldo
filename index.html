@@ -2,248 +2,662 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ponto — Controle de Horas</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Economix — Controle de Gastos</title>
+<meta name="theme-color" content="#05070d" id="themeColorMeta">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#14171c" id="meta-theme-color">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ponto">
-
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://accounts.google.com/gsi/client" async defer onload="window.googleCarregou = true; if(window.iniciarBotaoGoogle) window.iniciarBotaoGoogle();"></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div id="flash-overlay"></div>
+<div class="bg-grid"></div>
+
+<!-- Modal de boas-vindas / login -->
+<div class="modal-overlay" id="modalBoasVindas">
+  <div class="modal-card">
+    <div class="modal-icone">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="white" stroke-width="1.8"/>
+        <path d="M12 7v10M9.5 9.2c0-1 1-1.7 2.5-1.7s2.5.6 2.5 1.6c0 2.3-5 1-5 3.3 0 1 1 1.6 2.5 1.6s2.5-.7 2.5-1.7" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>Bem-vindo ao Economix</h1>
+    <p class="modal-explica">Crie uma conta pra acessar seus dados de qualquer aparelho e receber avisos por e-mail.</p>
+
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab active" data-auth="entrar">Entrar</button>
+      <button type="button" class="auth-tab" data-auth="cadastrar">Criar conta</button>
+    </div>
+
+    <form id="formAuth">
+      <input type="text" id="authNome" placeholder="Seu nome" maxlength="20" autocomplete="off" style="display:none;">
+      <input type="email" id="authEmail" placeholder="seuemail@gmail.com" required autocomplete="off">
+      <div class="campo-senha-wrap">
+        <input type="password" id="authSenha" placeholder="Senha" required autocomplete="off">
+        <button type="button" id="btnMostrarSenha" class="btn-olho-senha" title="Mostrar senha">👁</button>
+      </div>
+      <button type="submit" id="btnAuthSubmit">Entrar</button>
+    </form>
+
+    <form id="formCodigo" style="display:none; flex-direction:column; gap:10px;">
+      <p class="modal-explica" style="margin-bottom:4px;">Mandamos um código de 6 dígitos pro seu e-mail. Confere a caixa de entrada (e o spam, às vezes cai lá).</p>
+      <input type="text" id="authCodigo" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="off">
+      <button type="submit" id="btnCodigoSubmit">Confirmar código</button>
+      <button type="button" id="btnReenviarCodigo" class="link-discreto" style="margin-top:4px;">Reenviar código</button>
+    </form>
+
+    <div id="authErro" class="auth-erro"></div>
+    <div id="authCarregando" class="auth-carregando" style="display:none;">Conectando ao servidor... (pode levar até 1 minuto se ele estava dormindo)</div>
+
+    <div class="divisor-ou"><span>ou</span></div>
+    <div id="botaoGoogle" style="margin-top:4px; display:flex; justify-content:center;"></div>
+    <p id="avisoGooglePwa" class="campo-aviso" style="display:none;text-align:center;margin-top:10px;">
+      O login do Google não funciona dentro do app instalado. Abra <b>economix.onrender.com</b> pelo navegador (Chrome/Safari) pra entrar com Google, ou use e-mail e senha aqui no app.
+    </p>
+
+    <button id="btnSemConta" class="link-discreto" style="margin-top:16px;">Continuar sem conta (dados só neste aparelho)</button>
+  </div>
+</div>
 
 <div class="app">
   <div id="demoBanner" class="demo-banner" style="display:none;"><span>👀 Modo demonstração — dados fictícios</span><button id="btnLimparDemo">Começar do zero</button></div>
 
   <header class="topbar">
     <div class="brand">
-      <button class="brand-mark" id="brand-mark-btn" type="button" aria-label="Ponto">●</button>
-      <span class="brand-name">PONTO</span>
-      <span class="brand-version hidden" id="brand-version">v1.0</span>
-      <span class="brand-user" id="brand-user">
-        <img id="brand-user-photo" class="hidden" alt="">
-        <span id="brand-user-name"></span>
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="white" stroke-width="1.8"/>
+          <path d="M12 7v10M9.5 9.2c0-1 1-1.7 2.5-1.7s2.5.6 2.5 1.6c0 2.3-5 1-5 3.3 0 1 1 1.6 2.5 1.6s2.5-.7 2.5-1.7" stroke="white" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
       </span>
-      <button class="theme-toggle" id="theme-toggle" type="button" title="Alternar tema" aria-label="Alternar tema">
-        <span id="theme-toggle-icon">☾</span>
-      </button>
+      <span class="brand-name">Economix</span>
     </div>
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="timer">Trabalhar</button>
-      <button class="tab-btn" data-tab="historico">Histórico</button>
-      <button class="tab-btn" data-tab="config">Configurar</button>
-    </nav>
+    <div id="streakBadge" class="streak-badge" style="display:none;">🔥 0 dias</div>
+    <div class="topbar-direita">
+      <button id="btnPerfil" class="btn-perfil-topo" title="Sua conta">
+        <img id="perfilTopoFoto" style="display:none;">
+        <span id="perfilTopoInicial">?</span>
+      </button>
+      <button id="btnConfig" class="btn-tema" title="Configurações">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button id="btnTema" class="btn-tema" title="Alternar tema">
+        <svg id="iconeLua" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconeSol" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <div class="topbar-date" id="dataAtual"></div>
+    </div>
   </header>
 
-  <!-- TELA: TIMER -->
-  <main class="screen active" id="screen-timer">
+  <div id="painelPerfilTopo" class="painel-perfil-topo escondido">
+    <div class="painel-perfil-cabecalho">
+      <div class="perfil-foto-wrap" style="width:56px;height:56px;">
+        <img id="perfilTopoFotoGrande" class="perfil-foto" style="display:none;width:56px;height:56px;">
+        <div id="perfilTopoPlaceholderGrande" class="perfil-foto-placeholder" style="width:56px;height:56px;font-size:22px;">👤</div>
+        <button id="btnFotoTopo" class="btn-foto-editar" title="Alterar foto">✎</button>
+        <input type="file" id="inputFotoTopo" accept="image/*" hidden>
+      </div>
+      <div>
+        <div class="painel-perfil-nome" id="painelPerfilNome">—</div>
+        <div class="painel-perfil-email" id="painelPerfilEmail">—</div>
+      </div>
+    </div>
+    <div class="painel-perfil-linha">
+      <span>Conta criada em</span>
+      <b id="painelPerfilData">—</b>
+    </div>
+    <div class="painel-perfil-linha">
+      <span>Plano atual</span>
+      <b id="painelPerfilPlano">Free</b>
+    </div>
+    <button id="btnPerfilConfig" class="link-discreto" style="margin-top:10px;">Abrir configurações completas</button>
+    <button id="btnPerfilSair" class="link-discreto link-perigo" style="margin-top:6px;">Sair da conta</button>
+  </div>
 
-    <section class="clock-card">
-      <div class="clock-label" id="clock-status">Pronto para começar</div>
-      <div class="clock-display" id="clock-display">00:00:00</div>
-      <button class="clock-btn" id="btn-toggle">
-        <span id="btn-toggle-label">Iniciar</span>
+  <section class="hero">
+    <div class="hero-saudacao" id="saudacao">Olá</div>
+    <div class="hero-label">seu saldo é</div>
+    <div class="hero-linha-valor">
+      <div class="hero-value" id="saldoTotal">R$ 0,00</div>
+      <button id="btnOcultar" class="btn-ocultar" title="Ocultar saldo">
+        <svg id="iconeOlhoAberto" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg id="iconeOlhoFechado" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
       </button>
-    </section>
+    </div>
+    <div class="hero-sub">
+      <div class="pill pill-in">
+        <span class="pill-dot"></span>
+        <span>Entradas <b id="totalEntradas">R$ 0,00</b></span>
+      </div>
+      <div class="pill pill-out">
+        <span class="pill-dot"></span>
+        <span>Saídas <b id="totalSaidas">R$ 0,00</b></span>
+      </div>
+    </div>
+    <div class="hero-meta-barra-wrap" id="heroMetaBarraWrap">
+      <div id="heroMetasLista" class="hero-metas-lista"></div>
+    </div>
+  </section>
 
-    <section class="panel earnings-panel">
-      <div class="panel-title">Ganhos do mês</div>
-      <div class="earnings-grid">
-        <div class="earnings-item">
-          <span class="earnings-value" id="stat-hours">0h 00m</span>
-          <span class="earnings-tag">horas acumuladas</span>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="lancar">Lançar</button>
+    <button class="tab-btn" data-tab="meses">Meses</button>
+    <button class="tab-btn" data-tab="analise">Análise</button>
+    <button class="tab-btn" data-tab="fixos">Fixos</button>
+  </nav>
+  <p class="tabs-dica" id="tabsDica">Adicione seus gastos e ganhos aqui</p>
+
+  <!-- ABA LANÇAR -->
+  <section class="tab-conteudo ativo" id="tab-lancar">
+
+    <section class="painel">
+      <form id="formLancamento" class="form-lanc">
+        <div class="form-row">
+          <input type="text" id="descricao" placeholder="Ex: Lanche, mesada, jogo..." required maxlength="40">
+          <input type="number" id="valor" placeholder="0,00" step="0.01" min="0.01" required>
         </div>
-        <div class="earnings-item highlight">
-          <span class="earnings-value" id="stat-money">R$ 0,00</span>
-          <span class="earnings-tag">já garantido</span>
+
+        <div class="form-row" id="linhaCategoria" style="display:none;">
+          <select id="categoria" class="select-cat"></select>
         </div>
-        <div class="earnings-item">
-          <span class="earnings-value" id="stat-rate">R$ 0,00</span>
-          <span class="earnings-tag">valor da hora</span>
-        </div>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="progress-fill"></div>
-      </div>
-      <div class="progress-caption" id="progress-caption">0% do mês trabalhado</div>
-    </section>
 
-    <section class="panel break-panel">
-      <div class="panel-title">Intervalo</div>
-      <div class="break-row" id="break-idle">
-        <input type="number" id="break-minutes" placeholder="Min" min="0" value="15">
-        <input type="number" id="break-seconds" placeholder="Seg" min="0" max="59" value="0">
-        <button class="btn-secondary" id="btn-break-start">Iniciar intervalo</button>
-      </div>
-      <div class="break-row hidden" id="break-active">
-        <div class="break-countdown" id="break-countdown">15:00</div>
-        <button class="btn-danger" id="btn-break-cancel">Cancelar</button>
-      </div>
-    </section>
-
-    <section class="dev-panel hidden" id="dev-panel">
-      <div class="dev-panel-title">Modo dev — velocidade do cronômetro</div>
-      <div class="dev-speed-row">
-        <button class="dev-speed-btn selected" data-speed="1">1x</button>
-        <button class="dev-speed-btn" data-speed="2">2x</button>
-        <button class="dev-speed-btn" data-speed="5">5x</button>
-        <button class="dev-speed-btn" data-speed="10">10x</button>
-        <button class="dev-speed-btn" data-speed="20">20x</button>
-        <button class="dev-speed-btn" data-speed="50">50x</button>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- TELA: HISTÓRICO -->
-  <main class="screen" id="screen-historico">
-    <section class="panel">
-      <div class="panel-title-row">
-        <div class="panel-title">Histórico</div>
-        <select id="month-select"></select>
-      </div>
-      <div class="month-summary" id="month-summary"></div>
-      <div class="history-list" id="history-list"></div>
-    </section>
-  </main>
-
-  <!-- TELA: CONFIG -->
-  <main class="screen" id="screen-config">
-    <section class="panel profile-panel">
-      <div class="panel-title">Perfil</div>
-      <div class="profile-row">
-        <button class="profile-photo" id="profile-photo-btn" type="button">
-          <img id="profile-photo-img" class="hidden" alt="Foto de perfil">
-          <span id="profile-photo-placeholder">+</span>
-        </button>
-        <input type="text" id="input-name" class="profile-name-input" placeholder="Seu nome">
-        <input type="file" id="profile-photo-input" accept="image/*" class="hidden">
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-title">Salário e jornada</div>
-
-      <label class="field-label" for="input-salary">Salário mensal (R$)</label>
-      <input type="number" id="input-salary" placeholder="Ex: 1500" min="0" step="0.01">
-
-      <label class="field-label" for="input-hours-day">Horas por dia de trabalho</label>
-      <input type="number" id="input-hours-day" placeholder="Ex: 8" min="0" step="0.5">
-
-      <label class="field-label">Dias da semana que trabalha</label>
-      <div class="weekday-grid" id="weekday-grid">
-        <button class="weekday-btn" data-day="0">D</button>
-        <button class="weekday-btn" data-day="1">S</button>
-        <button class="weekday-btn" data-day="2">T</button>
-        <button class="weekday-btn" data-day="3">Q</button>
-        <button class="weekday-btn" data-day="4">Q</button>
-        <button class="weekday-btn" data-day="5">S</button>
-        <button class="weekday-btn" data-day="6">S</button>
-      </div>
-
-      <button class="btn-primary" id="btn-save-config">Salvar configuração</button>
-      <div class="save-confirm hidden" id="save-confirm">Configuração salva ✓</div>
-    </section>
-
-    <section class="panel decay-panel">
-      <div class="panel-title">Redução por hora extra</div>
-      <p class="backup-hint">Depois de bater a meta diária (horas por dia configurada acima), o valor da hora pode ir caindo aos poucos — útil se você quiser um incentivo pra não estender demais o expediente.</p>
-
-      <div class="profile-row">
-        <span class="field-label" style="margin:0;">Ativar redução</span>
-        <button class="switch" id="decay-enabled-toggle" type="button" role="switch" aria-checked="false">
-          <span class="switch-knob"></span>
-        </button>
-      </div>
-      <div class="save-confirm" style="text-align:left;color:var(--text-dim);margin-top:8px;">Meta diária: <span id="decay-goal-preview">configure as horas por dia acima</span></div>
-
-      <div id="decay-fields">
-        <div class="decay-row">
-          <div class="decay-field">
-            <label class="field-label" for="input-decay-interval">A cada</label>
-            <div class="input-suffix-wrap">
-              <input type="number" id="input-decay-interval" min="1" value="30">
-              <span class="input-suffix">min</span>
-            </div>
+        <div class="form-row form-row-tipo">
+          <div class="tipo-toggle">
+            <button type="button" class="tipo-btn tipo-saida active" data-tipo="saida">
+              <span class="seta">↓</span> Gastei
+            </button>
+            <button type="button" class="tipo-btn tipo-entrada" data-tipo="entrada">
+              <span class="seta">↑</span> Recebi
+            </button>
           </div>
-          <div class="decay-field">
-            <label class="field-label" for="input-decay-percent">Reduz</label>
-            <div class="input-suffix-wrap">
-              <input type="number" id="input-decay-percent" min="0" max="100" value="10">
-              <span class="input-suffix">%</span>
-            </div>
-          </div>
+          <button type="submit" class="btn-add" id="btnSubmit">
+            <span>Adicionar</span>
+          </button>
         </div>
 
-        <label class="field-label" for="input-decay-scope">Redução vale</label>
-        <div class="select-wrap">
-          <select id="input-decay-scope">
-            <option value="all">O dia todo</option>
-            <option value="limited">Só por um limite de horas</option>
+        <label class="check-recorrente" id="linhaRecorrente" style="display:none;">
+          <input type="checkbox" id="checkRecorrente">
+          <span>Repetir todo mês (gasto/ganho fixo)</span>
+        </label>
+        <div id="linhaDiaRecorrente" style="display:none;margin-top:8px;">
+          <label class="campo-label" style="margin-top:0;">Em qual dia do mês?</label>
+          <select id="diaRecorrente" class="select-cat" style="margin-bottom:8px;">
+            <!-- opções preenchidas via JS: dia 1 a 31 -->
           </select>
+          <label class="check-recorrente" style="margin-top:8px;">
+            <input type="checkbox" id="checkAplicarEsteMes" checked>
+            <span>Já aplicar esse mês também</span>
+          </label>
+          <label class="campo-label">Por quantos meses repetir?</label>
+          <input type="number" id="quantosMeses" placeholder="Ex: 12" min="1" max="60" value="6">
+          <p class="campo-aviso" id="previewFimRecorrente" style="color:var(--blue-bright);font-weight:600;"></p>
+          <p class="campo-aviso">O app já cria todos os lançamentos futuros de uma vez — não precisa voltar aqui todo mês.</p>
         </div>
 
-        <div class="decay-field hidden" id="decay-limit-wrap">
-          <label class="field-label" for="input-decay-limit">Limite</label>
-          <div class="input-suffix-wrap">
-            <input type="number" id="input-decay-limit" min="0" value="2">
-            <span class="input-suffix">h</span>
+        <div class="dica-teclado">Enter adiciona · Esc cancela edição</div>
+      </form>
+    </section>
+
+    <section class="painel" id="painelBusca" style="display:none;">
+      <input type="text" id="buscaLancamento" placeholder="🔍 Buscar por nome...">
+    </section>
+
+    <section class="painel" id="painelLimite" style="display:none;">
+      <div class="lista-header" style="margin-bottom: 10px;">
+        <span>Limite de gasto mensal</span>
+      </div>
+      <div class="form-row">
+        <input type="number" id="limiteValor" placeholder="Ex: 100,00" step="0.01" min="0">
+        <button id="btnSalvarLimite" class="btn-ghost-sm">Salvar</button>
+      </div>
+      <div id="limiteAviso" class="limite-aviso"></div>
+    </section>
+
+    <section class="painel">
+      <div class="filtros">
+        <button class="filtro-btn ativo" data-filtro="todos">Tudo</button>
+        <button class="filtro-btn" data-filtro="entrada">Entradas</button>
+        <button class="filtro-btn" data-filtro="saida">Saídas</button>
+      </div>
+
+      <div class="lista-header">
+        <span>Movimentações</span>
+      </div>
+
+      <div id="blocosMeses"></div>
+
+      <div id="vazio" class="vazio">
+        <div class="vazio-icone">◌</div>
+        <p>Nada por aqui ainda.</p>
+        <span>Adicione seu primeiro gasto ou ganho acima.</span>
+      </div>
+    </section>
+
+  </section>
+
+  <!-- ABA MESES -->
+  <section class="tab-conteudo" id="tab-meses">
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Resumo por mês</span>
+      </div>
+      <div id="resumoMeses" class="resumo-meses"></div>
+      <div id="resumoMesesVazio" class="vazio vazio-mini">
+        <span>Nenhum mês com movimentações ainda.</span>
+      </div>
+    </section>
+  </section>
+
+  <!-- ABA ANÁLISE -->
+  <section class="tab-conteudo" id="tab-analise">
+
+    <section class="painel" id="painelDonut" style="display:none;">
+      <div class="lista-header" style="margin-bottom:14px;">
+        <span>Distribuição de gastos</span>
+      </div>
+      <div class="donut-wrap">
+        <svg id="donutSvg" viewBox="0 0 120 120" width="140" height="140"></svg>
+        <div class="donut-centro">
+          <div class="donut-centro-label">Este mês</div>
+          <div class="donut-centro-valor" id="donutTotal">R$ 0,00</div>
+        </div>
+      </div>
+      <div id="donutLegenda" class="donut-legenda"></div>
+      <div id="donutVazio" class="vazio vazio-mini">
+        <span>Sem gastos registrados este mês ainda.</span>
+      </div>
+    </section>
+    <section class="painel" id="donutBloqueado" style="text-align:center;">
+      <div class="lista-header" style="margin-bottom:10px;justify-content:center;">
+        <span>Distribuição de gastos 🔒</span>
+      </div>
+      <p class="config-fs-explica" style="margin:0 auto;">Esse gráfico é um recurso Pro. Assine pra ver pra onde seu dinheiro está indo.</p>
+    </section>
+
+    <section class="painel meta-painel">
+      <div class="lista-header" style="margin-bottom:12px;">
+        <span>Metas de economia</span>
+      </div>
+      <div id="listaMetas" class="lista-metas"></div>
+      <div id="metasVazio" class="vazio vazio-mini">
+        <span>Nenhuma meta ainda. Cria a primeira abaixo.</span>
+      </div>
+      <div class="form-row" id="formNovaMeta" style="margin-top:12px;">
+        <input type="text" id="novaMetaNome" placeholder="Nome da meta (ex: Tênis novo)" maxlength="30">
+        <input type="number" id="novaMetaValor" placeholder="Valor R$" step="0.01" min="1">
+      </div>
+      <button id="btnAddMeta" class="btn-ghost-sm" style="margin-top:8px;">+ Adicionar meta</button>
+      <p class="campo-aviso" id="metasAvisoLimite" style="display:none;">No plano Free/Pro só dá pra ter 1 meta por vez. O Ultimate libera metas ilimitadas.</p>
+      <div id="metasConcluidasSecao" style="display:none;margin-top:18px;">
+        <div class="lista-header" style="margin-bottom:10px;">
+          <span>🏆 Metas concluídas</span>
+        </div>
+        <div id="listaMetasConcluidas" class="lista-metas"></div>
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Comparado ao mês passado</span>
+      </div>
+      <div id="comparacao" class="comparacao"></div>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Maiores gastos do mês</span>
+      </div>
+      <div id="topGastos" class="top-lista"></div>
+      <div id="topGastosVazio" class="vazio vazio-mini">
+        <span>Sem saídas registradas ainda.</span>
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom: 14px;">
+        <span>Maiores entradas do mês</span>
+      </div>
+      <div id="topEntradas" class="top-lista"></div>
+      <div id="topEntradasVazio" class="vazio vazio-mini">
+        <span>Sem entradas registradas ainda.</span>
+      </div>
+    </section>
+
+  </section>
+
+  <!-- ABA FIXOS -->
+  <section class="tab-conteudo" id="tab-fixos">
+    <section class="painel">
+      <div class="lista-header" style="margin-bottom:14px;">
+        <span>Gastos e ganhos fixos</span>
+      </div>
+      <div id="listaFixos" class="lista-fixos"></div>
+      <div id="fixosVazio" class="vazio vazio-mini">
+        <span>Nenhum lançamento fixo criado ainda. Marque "Repetir todo mês" ao lançar.</span>
+      </div>
+    </section>
+  </section>
+
+  <!-- CONFIGURAÇÕES — tela cheia, estilo painel de controle -->
+  <div class="config-fullscreen escondido" id="configFullscreen">
+    <div class="config-fs-topo">
+      <button id="btnFecharConfig" class="config-fs-voltar">‹ Voltar pro app</button>
+      <span class="config-fs-titulo">Configurações</span>
+    </div>
+    <div class="config-fs-corpo">
+      <nav class="config-sidebar">
+        <button class="config-side-item active" data-secao="perfil">
+          <span class="config-side-icone">👤</span> Perfil
+        </button>
+        <button class="config-side-item" data-secao="plano">
+          <span class="config-side-icone">💳</span> Plano e pagamentos
+        </button>
+        <button class="config-side-item" data-secao="cores">
+          <span class="config-side-icone">🎨</span> Personalização
+        </button>
+        <button class="config-side-item" data-secao="dev">
+          <span class="config-side-icone">🛠️</span> Modo desenvolvedor
+        </button>
+        <button class="config-side-item" data-secao="sobre">
+          <span class="config-side-icone">ℹ️</span> Sobre e versão
+        </button>
+        <button class="config-side-item config-side-perigo" data-secao="sair">
+          <span class="config-side-icone">🚪</span> Sair
+        </button>
+      </nav>
+
+      <div class="config-conteudo-area">
+
+        <div class="config-fs-secao ativa" id="fsPerfil">
+          <h2>Perfil</h2>
+          <p class="config-fs-explica">Como seu nome e foto aparecem no app.</p>
+          <div class="perfil-topo">
+            <div class="perfil-foto-wrap">
+              <img id="perfilFotoImg" class="perfil-foto" style="display:none">
+              <div id="perfilFotoPlaceholder" class="perfil-foto-placeholder">👤</div>
+              <button id="btnFoto" class="btn-foto-editar" title="Alterar foto">✎</button>
+              <input type="file" id="inputFoto" accept="image/*" hidden>
+            </div>
+            <div class="perfil-campos">
+              <label class="campo-label">Seu nome</label>
+              <input type="text" id="configNome" maxlength="20" placeholder="Seu nome">
+            </div>
+          </div>
+          <label class="campo-label">E-mail (avisos dentro do app)</label>
+          <input type="email" id="configEmail" placeholder="seuemail@gmail.com">
+          <p class="campo-aviso">Você recebe um resumo por e-mail todo dia às 8h, além dos avisos aqui dentro do app.</p>
+          <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
+        </div>
+
+        <div class="config-fs-secao" id="fsPlano">
+          <h2>Plano e pagamentos</h2>
+          <p class="config-fs-explica">Seu plano atual: <b id="planoAtualNome">Free</b>. Compare o que cada um oferece antes de decidir.</p>
+          <div id="comparativoPlanos" class="comparativo"></div>
+        </div>
+
+        <div class="config-fs-secao" id="fsCores">
+          <h2>Personalização</h2>
+          <p class="config-fs-explica" id="coresExplica">Escolha a cor de destaque do app.</p>
+          <div class="cores-grade" id="coresGrade">
+            <button class="cor-opcao" data-cor="azul" data-nivel="free" style="--amostra:#3b82f6;"><span></span>Azul</button>
+            <button class="cor-opcao" data-cor="verde" data-nivel="pro" style="--amostra:#10b981;"><span></span>Verde</button>
+            <button class="cor-opcao" data-cor="laranja" data-nivel="pro" style="--amostra:#f97316;"><span></span>Laranja</button>
+            <button class="cor-opcao" data-cor="roxo" data-nivel="ultimate" style="--amostra:#8b5cf6;"><span></span>Roxo</button>
+            <button class="cor-opcao" data-cor="rosa" data-nivel="ultimate" style="--amostra:#ec4899;"><span></span>Rosa</button>
+            <button class="cor-opcao" data-cor="vermelho" data-nivel="ultimate" style="--amostra:#ef4444;"><span></span>Vermelho</button>
+            <label class="cor-opcao cor-rgb" id="corLivreLabel" data-nivel="ultimate">
+              <span class="amostra-rgb" id="amostraCorLivre"></span>Livre
+              <input type="color" id="corLivreInput" style="position:absolute;opacity:0;width:1px;height:1px;">
+            </label>
+          </div>
+
+          <p class="config-fs-explica" style="margin-top:24px;">Escolha como a lista de lançamentos aparece.</p>
+          <div class="cores-grade" id="layoutGrade">
+            <button class="cor-opcao layout-opcao" data-layout="padrao" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">📋</span>Padrão</button>
+            <button class="cor-opcao layout-opcao" data-layout="poupix" data-nivel="free"><span style="background:none;box-shadow:none;font-size:20px;">🐷</span>PoupPix</button>
+            <button class="cor-opcao layout-opcao" data-layout="moderno" data-nivel="pro"><span style="background:none;box-shadow:none;font-size:20px;">✨</span>Moderno</button>
+            <button class="cor-opcao layout-opcao" data-layout="cards" data-nivel="ultimate"><span style="background:none;box-shadow:none;font-size:20px;">🗂️</span>Cards</button>
+            <button class="cor-opcao layout-opcao" data-layout="neon" data-nivel="ultimate"><span style="background:none;box-shadow:none;font-size:20px;">🌐</span>Neon</button>
           </div>
         </div>
-      </div>
-    </section>
 
-    <section class="panel">
-      <div class="panel-title">Backup</div>
-      <p class="backup-hint">Guarde uma cópia dos seus dados (perfil, configuração e histórico) ou restaure de um arquivo salvo antes.</p>
-      <div class="backup-row">
-        <button class="btn-secondary" id="btn-export">Exportar backup</button>
-        <button class="btn-secondary" id="btn-import">Importar backup</button>
-      </div>
-      <input type="file" id="import-file-input" accept="application/json" class="hidden">
-      <div class="save-confirm hidden" id="import-confirm">Backup restaurado ✓</div>
-    </section>
+        <div class="config-fs-secao" id="fsDev">
+          <h2>Modo desenvolvedor</h2>
+          <p class="config-fs-explica">Desbloqueia todas as funções Pro e Ultimate pra testar, sem precisar comprar de verdade.</p>
+          <div id="devStatus" class="dev-status">Desligado.</div>
+          <div class="form-row" id="devForm">
+            <input type="password" id="devSenha" placeholder="Senha" maxlength="10">
+            <button id="btnDevAtivar" class="btn-ghost-sm">Ativar</button>
+          </div>
+          <button id="btnDevDesativar" class="link-discreto" style="display:none;margin-top:8px;">Desativar modo desenvolvedor</button>
+          <div id="devToggleWrap" style="display:none;gap:8px;margin-top:14px;">
+            <button class="btn-ghost-sm dev-plano-btn" data-plano="pro">Simular Pro</button>
+            <button class="btn-ghost-sm dev-plano-btn" data-plano="ultimate">Simular Ultimate</button>
+          </div>
+        </div>
 
-    <section class="panel danger-panel">
-      <div class="panel-title">Zona de risco</div>
-      <p class="backup-hint">Isso apaga perfil, configuração e todo o histórico de horas deste dispositivo. Não tem como desfazer — exporte um backup antes, se quiser guardar.</p>
-      <button class="btn-danger btn-danger-full" id="btn-reset-all">Apagar todos os dados</button>
-    </section>
-  </main>
+        <div class="config-fs-secao" id="fsSobre">
+          <h2>Sobre e versão</h2>
+          <div class="sobre-conteudo" style="text-align:left;padding:0;">
+            <div class="sobre-icone">💰</div>
+            <div class="sobre-nome">Economix</div>
+            <div class="sobre-versao">Versão 1.0.0</div>
+            <p class="sobre-texto" style="margin:0;max-width:100%;">Um app simples de controle de gastos e ganhos, feito para aprender e organizar a vida financeira.</p>
+            <div class="creditos-lista">
+              <div class="creditos-item">
+                <span class="creditos-nome">Eduardo Santos Nunes</span>
+                <span class="creditos-funcao">Programação e código do app</span>
+              </div>
+              <div class="creditos-item">
+                <span class="creditos-nome">Marcos Pitão Souza</span>
+                <span class="creditos-funcao">Backend e revisão do código</span>
+              </div>
+            </div>
+            <button id="btnVerCreditos" class="btn-ghost-sm creditos-btn-animado" type="button">▶ Ver créditos animados</button>
+          </div>
+          <button id="btnReverTutorial" class="btn-ghost-sm" style="margin-top:16px;">Rever tutorial de boas-vindas</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de boas-vindas de compra (modo dev) -->
+  <div class="modal-overlay escondido" id="modalCompra">
+    <div class="modal-card tutorial-card">
+      <div class="tutorial-slide ativo" data-slide="0">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#22d3ee,#3b82f6);">🎉</div>
+        <h1>Parabéns pelo Ultimate!</h1>
+        <p class="modal-explica">Agora você tem acesso a tudo. Vamos mostrar rapidinho o que mudou.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="1">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#fbbf24,#f97316);">🏷️</div>
+        <h1>Categorias</h1>
+        <p class="modal-explica">Organiza cada gasto por tipo (comida, transporte, etc) direto no formulário de Lançar.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="2">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);">🔁</div>
+        <h1>Gastos fixos</h1>
+        <p class="modal-explica">Marca "repetir todo mês" e escolhe o dia exato — não esquece mais das contas recorrentes.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="3">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#34d399,#059669);">🔍</div>
+        <h1>Busca e limite</h1>
+        <p class="modal-explica">Acha qualquer lançamento pelo nome e define um teto de gasto mensal, na aba Análise.</p>
+      </div>
+      <div class="tutorial-slide" data-slide="4">
+        <div class="modal-icone" style="background:linear-gradient(135deg,#f472b6,#db2777);">🎯</div>
+        <h1>Metas e foto</h1>
+        <p class="modal-explica">Foto de perfil liberada e metas de economia mais completas te esperando.</p>
+      </div>
+
+      <div class="tutorial-nav">
+        <button id="btnTutorialAnterior" class="btn-ghost-sm" style="visibility:hidden;">‹ Voltar</button>
+        <div class="tutorial-pontos" id="tutorialPontos"></div>
+        <button id="btnTutorialProximo" class="btn-ghost-sm">Próximo ›</button>
+      </div>
+
+      <button id="btnFecharModalCompra" class="btn-add" style="margin-top:14px;display:none;">Entendi, vamos lá!</button>
+    </div>
+  </div>  <footer class="rodape">
+    <button id="btnExportar" class="link-discreto">Exportar backup</button>
+    <span class="rodape-sep">·</span>
+    <button id="btnImportar" class="link-discreto">Importar backup</button>
+    <span class="rodape-sep">·</span>
+    <button id="btnResetar" class="link-discreto link-perigo">Resetar tudo</button>
+    <input type="file" id="inputImportar" accept="application/json" hidden>
+  </footer>
 
 </div>
 
-<audio id="alarm-sound" preload="auto"></audio>
+  <!-- Tutorial de primeiro acesso: spotlight nos botões reais -->
+  <div class="tour-overlay escondido" id="tourOverlay">
+    <div class="tour-anel" id="tourAnel"></div>
+    <div class="tour-balao" id="tourBalao">
+      <div class="tour-balao-titulo" id="tourTitulo">—</div>
+      <div class="tour-balao-texto" id="tourTexto">—</div>
+      <div class="tour-balao-nav">
+        <button id="btnTourAnterior" class="btn-ghost-sm" style="visibility:hidden;">‹ Voltar</button>
+        <div class="tutorial-pontos" id="tourPontos"></div>
+        <button id="btnTourProximo" class="btn-ghost-sm">Próximo ›</button>
+      </div>
+      <button id="btnTourFechar" class="btn-add" style="margin-top:10px;display:none;">Entendi!</button>
+    </div>
+  </div>
+
+  <!-- Modal de ação do item (editar/excluir) -->
+  <div class="modal-overlay escondido" id="modalAcaoItem">
+    <div class="modal-card" style="max-width:280px;padding:26px 22px;">
+      <h1 id="acaoItemTitulo" style="font-size:16px;margin-bottom:18px;">Lançamento</h1>
+      <div class="confirmacao-pendente escondido" id="confirmacaoPendente">
+        <p id="confirmacaoTexto">Isso já caiu na conta?</p>
+        <div class="joinhas-row">
+          <button id="btnJoinhaSim" class="btn-joinha btn-joinha-sim" type="button">
+            <span>👍</span><span class="rotulo">Já caiu</span>
+          </button>
+          <button id="btnJoinhaNao" class="btn-joinha btn-joinha-nao" type="button">
+            <span>👎</span><span class="rotulo">Ainda não</span>
+          </button>
+        </div>
+      </div>
+      <button id="btnAcaoEditar" class="btn-add" style="width:100%;margin-bottom:10px;">✎ Editar</button>
+      <button id="btnAcaoExcluir" class="btn-add" style="width:100%;background:linear-gradient(135deg,#f87171,#b91c1c);box-shadow:0 4px 16px rgba(248,113,113,0.35);margin-bottom:10px;">✕ Excluir</button>
+      <button id="btnAcaoCancelar" class="link-discreto">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal de confirmação logo após adicionar (entrada caiu? dívida paga?) -->
+  <div class="modal-overlay escondido" id="modalConfirmarNovo">
+    <div class="modal-card" style="max-width:280px;padding:26px 22px;text-align:center;">
+      <p id="confirmarNovoTexto" style="margin-bottom:16px;font-weight:700;">—</p>
+      <div class="joinhas-row">
+        <button id="btnConfirmarNovoSim" class="btn-joinha btn-joinha-sim" type="button">
+          <span>👍</span><span class="rotulo">Já caiu / Paguei</span>
+        </button>
+        <button id="btnConfirmarNovoNao" class="btn-joinha btn-joinha-nao" type="button">
+          <span>👎</span><span class="rotulo">Ainda não</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Créditos estilo Minecraft -->
+  <div class="creditos-overlay escondido" id="creditosOverlay">
+    <button class="creditos-fechar" id="btnFecharCreditos" type="button">✕</button>
+    <div class="creditos-scroll" id="creditosScroll">
+      <h2>Economix</h2>
+      <div class="creditos-cargo">Controle de gastos e ganhos</div>
+
+      <h2 style="font-size:18px;margin-top:70px;">Programação e código do app</h2>
+      <div class="creditos-cargo" style="font-size:15px;color:#e8eaf6;letter-spacing:0;">Eduardo Santos Nunes</div>
+
+      <h2 style="font-size:18px;">Backend e revisão do código</h2>
+      <div class="creditos-cargo" style="font-size:15px;color:#e8eaf6;letter-spacing:0;">Marcos Pitão Souza</div>
+
+      <div class="creditos-final">Obrigado por usar o Economix 💜</div>
+    </div>
+  </div>
+
+  <!-- Modal de meta inicial (PoupPix) -->
+  <div class="modal-overlay escondido" id="modalMetaInicial">
+    <div class="modal-card" style="max-width:320px;">
+      <div class="modal-icone" style="background:linear-gradient(135deg,#facc15,#f97316);">🐷</div>
+      <h1>Qual é a sua meta?</h1>
+      <p class="modal-explica">Escolha quanto você quer juntar. Dá pra mudar depois.</p>
+      <button class="meta-inicial-opcao" data-valor="500"><b>R$ 500</b><span>Pra começar devagar</span></button>
+      <button class="meta-inicial-opcao" data-valor="1000"><b>R$ 1.000</b><span>Uma meta sólida</span></button>
+      <button class="meta-inicial-opcao" data-valor="5000"><b>R$ 5.000</b><span>Meta grande</span></button>
+      <button class="meta-inicial-opcao" id="btnMetaPersonalizada"><b>Meta personalizada</b><span>Escolher outro valor</span></button>
+      <div id="metaPersonalizadaCampo" style="display:none;margin-top:10px;">
+        <input type="number" id="metaPersonalizadaValor" placeholder="Valor R$" min="1" style="width:100%;margin-bottom:8px;">
+        <button id="btnConfirmarMetaPersonalizada" class="btn-add" style="width:100%;">Confirmar</button>
+      </div>
+      <button id="btnPularMetaInicial" class="link-discreto" style="margin-top:12px;">Pular por enquanto</button>
+    </div>
+  </div>
+
+  <!-- Modal de parabéns ao completar meta -->
+  <div class="modal-overlay escondido" id="modalParabensMeta">
+    <div class="modal-card">
+      <div class="modal-icone" style="background:linear-gradient(135deg,#facc15,#f97316);">🏆</div>
+      <h1>Meta concluída!</h1>
+      <p class="modal-explica">Parabéns, você completou <b id="parabensMetaNome" style="color:var(--text);">sua meta</b>! 🎉</p>
+      <button id="btnFecharParabensMeta" class="btn-add" style="width:100%;">Que orgulho!</button>
+    </div>
+  </div>
+
+  <!-- Editor de foto: mover e dar zoom -->
+  <div class="modal-overlay escondido" id="modalCropFoto">
+    <div class="modal-card" style="max-width:320px;">
+      <h1 style="font-size:16px;">Ajustar sua foto</h1>
+      <p class="modal-explica">Arraste pra mover e use o controle pra dar zoom.</p>
+      <div class="crop-area">
+        <canvas id="cropCanvas" width="260" height="260"></canvas>
+      </div>
+      <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" style="width:100%;margin:14px 0;">
+      <button id="btnConfirmarCrop" class="btn-add" style="width:100%;margin-bottom:8px;">Usar essa foto</button>
+      <button id="btnCancelarCrop" class="link-discreto">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Detalhe do plano -->
+  <div class="modal-overlay escondido" id="modalDetalhePlano">
+    <div class="modal-card" style="max-width:340px;text-align:left;">
+      <h1 id="detalhePlanoNome" style="font-size:18px;margin-bottom:14px;">Plano</h1>
+      <ul id="detalhePlanoDescricao" class="detalhe-plano-lista"></ul>
+      <button id="btnFecharDetalhePlano" class="btn-add" style="width:100%;margin-top:16px;">Entendi</button>
+    </div>
+  </div>
+
+  <!-- Modal de valor pra guardar/retirar de uma meta -->
+  <div class="modal-overlay escondido" id="modalValorMeta">
+    <div class="modal-card" style="max-width:300px;">
+      <h1 id="valorMetaTitulo" style="font-size:16px;margin-bottom:14px;">Valor</h1>
+      <form id="formValorMeta">
+        <input type="number" id="valorMetaInput" placeholder="R$ 0,00" step="0.01" min="0.01" autocomplete="off" required style="width:100%;margin-bottom:12px;">
+        <button type="submit" class="btn-add" style="width:100%;margin-bottom:8px;">Confirmar</button>
+      </form>
+      <button id="btnCancelarValorMeta" class="link-discreto">Cancelar</button>
+    </div>
+  </div>
 
 <button id="fabAdd" class="fab" title="Novo lançamento">+</button>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script src="script.js"></script>
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js").catch(() => {});
-    });
-  }
-</script>
 
-<!-- Modal Telefone WhatsApp - Pede uma vez só -->
+<!-- Modal Telefone WhatsApp - Pergunta número automaticamente -->
 <div class="modal-overlay escondido" id="modalTelefone">
   <div class="modal-card" style="max-width:340px;text-align:center;">
     <div class="modal-icone" style="background:linear-gradient(135deg,#25D366,#128C7E);">💬</div>
     <h1>Receber no WhatsApp?</h1>
-    <p class="modal-explica">Te mando resumo diário, alerta de limite e quando bater meta. Sem spam, só o importante.</p>
+    <p class="modal-explica">Te mando resumo diário às 8h, alerta de limite e parabéns quando bater meta. Sem spam.</p>
     <input type="tel" id="inputTelefoneZap" placeholder="(61) 99999-9999" inputmode="tel" style="width:100%;margin:12px 0 8px;padding:14px;border-radius:12px;border:1px solid var(--card-line);background:var(--ink-2);color:var(--text);font-size:16px;">
     <label style="display:flex;gap:8px;text-align:left;font-size:12px;color:var(--text-dim);margin:8px 0 14px;"><input type="checkbox" id="checkZapOptin" checked> Quero receber no zap</label>
     <button id="btnSalvarTelefone" class="btn-add" style="width:100%;">Ativar alertas no Zap</button>
     <button id="btnPularTelefone" class="link-discreto" style="margin-top:10px;">Agora não</button>
-    <p style="font-size:10px;color:var(--text-faint);margin-top:10px;">Você pode mudar isso depois em Configurações</p>
   </div>
 </div>
 
