@@ -1,13 +1,13 @@
 {
   "name": "Economix — Controle de Gastos",
   "short_name": "Economix",
-  "description": "Controle seus gastos e ganhos de forma simples.",
+  "description": "Controle de gastos, metas e limites com resumo diário por e-mail",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#05070d",
-  "theme_color": "#05070d",
-  "orientation": "portrait-primary",
+  "theme_color": "#0b4fb0",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
@@ -16,19 +16,13 @@
       "purpose": "any"
     },
     {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

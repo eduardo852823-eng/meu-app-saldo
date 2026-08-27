@@ -77,6 +77,8 @@ const usuarioSchema = new mongoose.Schema({
   lancamentos: [lancamentoSchema],
   metaAlvo: { type: Number, default: null },
   metas: [metaSchema],
+  telefone: { type: String, default: '' },
+  zapOptin: { type: Boolean, default: true },
   criadoEm: { type: Date, default: Date.now }
 });
 
@@ -156,6 +158,34 @@ async function enviarEmail(destinatario, assunto, texto) {
     console.error('Erro ao enviar e-mail:', erro.message);
   }
 }
+
+
+// ==============================
+// WhatsApp (Z-API)
+// ==============================
+async function enviarZap(telefone, mensagem){
+  const instanceId = process.env.ZAPI_INSTANCE_ID;
+  const token = process.env.ZAPI_TOKEN;
+  if(!instanceId || !token){
+    console.log('Z-API não configurada. Pulei envio pro', telefone);
+    return false;
+  }
+  const telLimpo = String(telefone).replace(/\D/g,'');
+  const telFinal = telLimpo.startsWith('55') ? telLimpo : '55' + telLimpo;
+  try{
+    const resp = await fetch(`https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: telFinal, message: mensagem })
+    });
+    console.log(`Zap tentativa para ${telFinal} status ${resp.status}`);
+    return resp.ok;
+  }catch(erro){
+    console.error('Erro Zap:', erro.message);
+    return false;
+  }
+}
+
 
 // ==============================
 // Middleware de autenticação
@@ -419,6 +449,8 @@ app.get('/dados', autenticar, (req, res) => {
     layoutAtual: req.usuario.layoutAtual,
     planoAtual: req.usuario.planoAtual,
     devAtivo: req.usuario.devAtivo,
+    telefone: req.usuario.telefone,
+    zapOptin: req.usuario.zapOptin,
     limiteGasto: req.usuario.limiteGasto
   });
 });
@@ -471,11 +503,45 @@ cron.schedule('0 8 * * *', async () => {
       const texto = `Olá, ${usuario.nome}!\n\nResumo do seu saldo esse mês:\nEntradas: R$ ${entradas.toFixed(2)}\nSaídas: R$ ${saidas.toFixed(2)}\nSaldo: R$ ${saldo.toFixed(2)}\n\nNão esqueça de registrar seus gastos de hoje no app!`;
 
       await enviarEmail(usuario.email, 'Resumo diário do seu saldo 📊', texto);
+      if(usuario.telefone && usuario.zapOptin){
+        const textoZap = `📊 *Resumo Economix - ${hoje.toLocaleDateString('pt-BR')}*\n\nOlá ${usuario.nome}!\nEntradas: R$ ${entradas.toFixed(2)}\nSaídas: R$ ${saidas.toFixed(2)}\n*Saldo: R$ ${saldo.toFixed(2)}*\n\nAbra o app 👉 https://eduardo852823-eng.github.io/meu-app-saldo/`;
+        await enviarZap(usuario.telefone, textoZap);
+      }
     }
   } catch (erro) {
     console.error('Erro ao rodar o envio diário:', erro.message);
   }
 });
+
+
+// Salvar telefone
+app.post('/telefone', async (req, res) => {
+  try{
+    const auth = req.headers.authorization?.replace('Bearer ', '');
+    if(!auth) return res.status(401).json({erro:'Sem token'});
+    const usuario = await Usuario.findOne({ token: auth });
+    if(!usuario) return res.status(401).json({erro:'Sessão inválida'});
+    const { telefone, zapOptin } = req.body;
+    if(!telefone) return res.status(400).json({erro:'Telefone obrigatório'});
+    usuario.telefone = String(telefone).replace(/\D/g,'');
+    if(typeof zapOptin !== 'undefined') usuario.zapOptin = !!zapOptin;
+    await usuario.save();
+    if(usuario.zapOptin){
+      await enviarZap(usuario.telefone, `Oi ${usuario.nome}! 👋 Economix ativado!\nVou te mandar resumo diário 8h aqui no zap.`);
+    }
+    res.json({ ok: true, telefone: usuario.telefone });
+  }catch(e){ console.error(e); res.status(500).json({erro:'Erro'}); }
+});
+
+app.post('/testar-zap', async (req, res) => {
+  try{
+    const { telefone } = req.body;
+    if(!telefone) return res.status(400).json({erro:'Telefone'});
+    await enviarZap(telefone, `Economix teste ✅ Seu Zap está funcionando!`);
+    res.json({ ok: true });
+  }catch(e){ res.status(500).json({erro:'Erro'}); }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
