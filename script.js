@@ -710,7 +710,7 @@ configSideItens.forEach(item => {
 });
 
 async function confirmarSair() {
-  if (!confirm('Isso vai sair da sua conta neste aparelho. Seus dados continuam salvos no servidor (se você tiver conta) e você pode entrar de novo quando quiser. Continuar?')) return;
+  if (!confirm('Isso vai sair da sua conta neste aparelho e apagar os dados salvos aqui (o que está no servidor continua guardado). Continuar?')) return;
 
   // Invalida o token no servidor também, não só neste aparelho
   if (tokenSessao) {
@@ -725,16 +725,16 @@ async function confirmarSair() {
     }
   }
 
-  nomeUsuario = '';
-  emailUsuario = '';
-  fotoUsuario = '';
-  tokenSessao = '';
-  criadoEm = '';
-  localStorage.removeItem(CHAVE_NOME);
-  localStorage.removeItem(CHAVE_EMAIL);
-  localStorage.removeItem(CHAVE_FOTO);
-  localStorage.removeItem(CHAVE_TOKEN);
-  localStorage.removeItem(CHAVE_CRIADOEM);
+  // Limpa TUDO que fica salvo neste aparelho — sem isso, o próximo uso (inclusive
+  // "continuar sem conta") herdava lançamentos, metas, plano e telefone da conta anterior.
+  const CHAVES_TUDO = [
+    CHAVE_LANCAMENTOS, CHAVE_META, CHAVE_METAS, CHAVE_NOME, CHAVE_TEMA, CHAVE_OCULTO,
+    CHAVE_PLANO, CHAVE_DEV, CHAVE_DEV_PLANO, CHAVE_EMAIL, CHAVE_FOTO, CHAVE_LIMITE,
+    CHAVE_CRIADOEM, CHAVE_COR, CHAVE_COR_HEX, CHAVE_LAYOUT, CHAVE_TUTORIAL_VISTO, CHAVE_TOKEN,
+    'saldo_telefone', 'saldo_zap_pulado', 'zap_perguntou_hoje', 'telefone_pendente_para_servidor'
+  ];
+  CHAVES_TUDO.forEach(chave => localStorage.removeItem(chave));
+
   location.reload();
 }
 
@@ -2222,19 +2222,38 @@ function atualizarDonut() {
   const raio = 50, cx = 60, cy = 60, largura = 16;
   const circ = 2 * Math.PI * raio;
   let acumulado = 0;
+  const primeiraRenderizacao = donutSvg.innerHTML === '';
   let svg = `<circle class="donut-fundo" cx="${cx}" cy="${cy}" r="${raio}" fill="none" stroke="var(--panel-2)" stroke-width="${largura}"/>`;
 
   entradas.forEach(([nome, valor], i) => {
     const pct = valor / total;
     const tamanho = pct * circ;
     const cor = CORES_DONUT[i % CORES_DONUT.length];
+    // Na primeira renderização começa zerado e anima até o valor real (entrada suave)
+    const dashInicial = primeiraRenderizacao ? `0 ${circ}` : `${tamanho} ${circ - tamanho}`;
     svg += `<circle class="donut-fatia" cx="${cx}" cy="${cy}" r="${raio}" fill="none" stroke="${cor}" stroke-width="${largura}"
-      stroke-dasharray="${tamanho} ${circ - tamanho}" stroke-dashoffset="${-acumulado}"
+      stroke-dasharray="${dashInicial}" stroke-dashoffset="${-acumulado}"
       transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt"/>`;
     acumulado += tamanho;
   });
 
   donutSvg.innerHTML = svg;
+
+  if (primeiraRenderizacao) {
+    // Força o navegador a aplicar o estado "zerado" antes de animar pro valor real
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        let acumuladoAnim = 0;
+        entradas.forEach(([nome, valor], i) => {
+          const pct = valor / total;
+          const tamanho = pct * circ;
+          const fatia = donutSvg.querySelectorAll('.donut-fatia')[i];
+          if (fatia) fatia.setAttribute('stroke-dasharray', `${tamanho} ${circ - tamanho}`);
+          acumuladoAnim += tamanho;
+        });
+      });
+    });
+  }
 
   donutLegendaEl.innerHTML = entradas.map(([nome, valor], i) => {
     const pct = ((valor / total) * 100).toFixed(0);

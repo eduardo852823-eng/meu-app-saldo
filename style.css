@@ -537,24 +537,24 @@ html[data-layout="poupix"] .btn-add {
 }
 html[data-layout="poupix"] input,
 html[data-layout="poupix"] .select-cat {
-  background: #f5f6fb;
+  background: var(--panel-2);
   border-color: rgba(18,22,46,0.08);
   padding: 11px 13px;
 }
-html[data-layout="poupix"] .tabs { background: #fff; box-shadow: 0 2px 14px rgba(18,22,46,0.06); padding: 3px; }
+html[data-layout="poupix"] .tabs { background: var(--panel); box-shadow: 0 2px 14px rgba(18,22,46,0.06); padding: 3px; }
 html[data-layout="poupix"] .tab-btn { padding: 9px 8px; }
 html[data-layout="poupix"] .tab-btn.active { background: #12173a; color: var(--blue-bright); }
 html[data-layout="poupix"] .meta-barra { background: linear-gradient(90deg, var(--blue-bright), var(--cyan)); box-shadow: none; }
-html[data-layout="poupix"] .item { background: #fff; box-shadow: 0 1px 8px rgba(18,22,46,0.05); padding: 11px 13px; }
-html[data-layout="poupix"] .donut-fundo { stroke: #eef0f8 !important; }
+html[data-layout="poupix"] .item { background: var(--panel); box-shadow: 0 1px 8px rgba(18,22,46,0.05); padding: 11px 13px; }
+html[data-layout="poupix"] .donut-fundo { stroke: var(--panel-2) !important; }
 
 /* Modo claro do PoupPix: garantir contraste em todos os textos secundários */
-html[data-layout="poupix"] .config-fs-explica,
-html[data-layout="poupix"] .campo-aviso,
-html[data-layout="poupix"] .meta-card-valores,
-html[data-layout="poupix"] .top-data,
-html[data-layout="poupix"] .comp-nome { color: var(--text-dim); }
-html[data-layout="poupix"] .painel-perfil-topo { background: #fff; box-shadow: 0 20px 50px rgba(18,22,46,0.18); }
+html[data-tema="claro"][data-layout="poupix"] .config-fs-explica,
+html[data-tema="claro"][data-layout="poupix"] .campo-aviso,
+html[data-tema="claro"][data-layout="poupix"] .meta-card-valores,
+html[data-tema="claro"][data-layout="poupix"] .top-data,
+html[data-tema="claro"][data-layout="poupix"] .comp-nome { color: var(--text-dim); }
+html[data-layout="poupix"] .painel-perfil-topo { background: var(--panel); box-shadow: 0 20px 50px rgba(18,22,46,0.18); }
 
 @media (max-width: 420px) {
   html[data-layout="poupix"] .topbar-direita { gap: 6px; }
