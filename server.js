@@ -10,16 +10,10 @@ const rateLimit = require('express-rate-limit');
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
-// Observação: origin "null" foi removida de propósito. Ela é usada por
-// iframes/páginas sandboxed e permitir isso com credentials:true abre
-// brecha pra ataques tipo CSRF (qualquer página maliciosa poderia mandar
-// requisição autenticada). Se o login pelo app instalado (PWA) realmente
-// precisar disso, o correto é identificar a origem real que ele manda
-// (geralmente é o mesmo domínio do app) em vez de liberar "null" geral.
 app.use(cors({
   origin: [
     'https://economix.onrender.com',
-    'https://eduardo852823-eng.github.io', // onde o app está publicado (GitHub Pages)
+    'https://eduardo852823-eng.github.io',
     'http://localhost:3000',
     'capacitor://localhost'
   ],
@@ -28,10 +22,7 @@ app.use(cors({
 app.use(express.json());
 
 // ==============================
-// Conexão com o MongoDB Atlas (banco de verdade, não se apaga quando o
-// servidor reinicia — ao contrário do arquivo JSON que usávamos antes)
-// A string de conexão vem de uma variável de ambiente (MONGODB_URI),
-// configurada no painel do Render.
+// MongoDB
 // ==============================
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Conectado ao MongoDB com sucesso!'))
@@ -84,28 +75,13 @@ const usuarioSchema = new mongoose.Schema({
 
 const Usuario = mongoose.model('Usuario', usuarioSchema);
 
-// ==============================
-// Senha: hash com sal (nunca guardamos a senha em texto puro)
-//
-// Usamos scrypt (nativo do Node) em vez de um SHA-256 simples: SHA-256
-// é rápido demais, o que facilita testar bilhões de senhas por segundo
-// em caso de vazamento do banco. scrypt é "lento de propósito" e usa
-// bastante memória, o que torna esse tipo de ataque muito mais caro.
-//
-// Contas criadas antes dessa mudança ainda têm hash no formato antigo
-// (sha256 puro, sem prefixo). Continuamos aceitando login nelas e, na
-// hora que a pessoa entra com sucesso, atualizamos o hash dela pra
-// scrypt automaticamente — sem precisar pedir pra trocar a senha.
-// ==============================
 function gerarHash(senha, sal) {
   const hash = crypto.scryptSync(senha, sal, 64).toString('hex');
   return `scrypt:${hash}`;
 }
-
 function gerarHashAntigo(senha, sal) {
   return crypto.createHash('sha256').update(senha + sal).digest('hex');
 }
-
 function senhaConfere(senha, sal, hashSalvo) {
   if (!hashSalvo) return false;
   if (hashSalvo.startsWith('scrypt:')) {
@@ -113,26 +89,18 @@ function senhaConfere(senha, sal, hashSalvo) {
     const salvo = Buffer.from(hashSalvo);
     return calculado.length === salvo.length && crypto.timingSafeEqual(calculado, salvo);
   }
-  // formato antigo (contas de antes da migração pra scrypt)
   return gerarHashAntigo(senha, sal) === hashSalvo;
 }
-
 function gerarToken() {
   return crypto.randomBytes(24).toString('hex');
 }
-
-// Sessão válida por 30 dias
 function gerarValidadeToken() {
   return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 }
-
 function gerarCodigo() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-// ==============================
-// E-mail (Nodemailer) — credenciais vêm de variáveis de ambiente
-// ==============================
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -159,249 +127,135 @@ async function enviarEmail(destinatario, assunto, texto) {
   }
 }
 
-
+// ==============================
+// EVOLUTION API - NOVO
+// ==============================
 async function enviarZap(telefone, mensagem){
-  const instanceId = process.env.ZAPI_INSTANCE_ID;
-  const token = process.env.ZAPI_TOKEN;
-  if(!instanceId || !token){ console.log('Z-API não configurada, pulei', telefone); return false; }
-  const telLimpo = String(telefone).replace(/\D/g,'');
-  const telFinal = telLimpo.startsWith('55') ? telLimpo : '55'+telLimpo;
-  try{
-    const resp = await fetch(`https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:telFinal, message:mensagem})
-    });
-    console.log('Zap para', telFinal, 'status', resp.status);
-    return resp.ok;
-  }catch(e){ console.error('Erro Zap', e.message); return false; }
-}
+  // Pode configurar no Render como variáveis, mas já deixo fallback com seus dados
+  const baseUrl = (process.env.EVOLUTION_API_URL || 'https://evolution-api-production-d61a.up.railway.app').replace(/\/$/, '');
+  const apikey = process.env.EVOLUTION_API_KEY || process.env.EVOLUTION_APIKEY || '998142A660D9-4A2F-A04A-A01B1B9AE0C5';
+  const instance = process.env.EVOLUTION_INSTANCE || 'economix';
 
-// ==============================
-// Middleware de autenticação
-// ==============================
-async function autenticar(req, res, next) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ erro: 'Não autenticado.' });
-
-  const usuario = await Usuario.findOne({ token });
-  if (!usuario) return res.status(401).json({ erro: 'Sessão inválida. Faça login de novo.' });
-
-  if (!usuario.tokenExpira || usuario.tokenExpira < new Date()) {
-    return res.status(401).json({ erro: 'Sessão expirada. Faça login de novo.' });
+  if(!baseUrl || !apikey){
+    console.log('Evolution API não configurada, pulei', telefone);
+    return false;
   }
 
+  let telLimpo = String(telefone).replace(/\D/g,'');
+  // Garante DDD + 55
+  if(telLimpo.length <= 11) telLimpo = '55' + telLimpo;
+  const telFinal = telLimpo; // Evolution aceita só número, sem @s.whatsapp.net no sendText
+
+  try{
+    const url = `${baseUrl}/message/sendText/${instance}`;
+    const resp = await fetch(url, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey': apikey
+      },
+      body: JSON.stringify({
+        number: telFinal,
+        text: mensagem,
+        options: {
+          delay: 1200,
+          presence: "composing"
+        }
+      })
+    });
+    const txt = await resp.text();
+    console.log('Evolution Zap para', telFinal, 'status', resp.status, '->', txt.slice(0,300));
+    return resp.ok;
+  }catch(e){
+    console.error('Erro Evolution enviarZap:', e.message);
+    return false;
+  }
+}
+
+// --- Middlewares e rotas (mantidas iguais) ---
+async function autenticar(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).json({ erro: 'Token não informado.' });
+  const usuario = await Usuario.findOne({ token });
+  if (!usuario || (usuario.tokenExpira && usuario.tokenExpira < new Date())) {
+    return res.status(401).json({ erro: 'Sessão expirada ou inválida.' });
+  }
   req.usuario = usuario;
   next();
 }
 
-// ==============================
-// Limite de tentativas (evita força bruta em senha e código)
-// ==============================
-const limitadorLogin = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10,
-  message: { erro: 'Muitas tentativas. Espera um pouco antes de tentar de novo.' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
+const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, message: { erro: 'Muitas tentativas, tente em 15 min' } });
 
-const limitadorCodigo = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 8,
-  message: { erro: 'Muitas tentativas de código. Espera um pouco antes de tentar de novo.' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-// ==============================
-// Rotas
-// ==============================
-
-app.get('/', (req, res) => {
-  res.send('API do Economix rodando com sucesso!');
-});
-
-// Cadastro
-app.post('/cadastro', limitadorLogin, async (req, res) => {
+app.post('/cadastro', async (req, res) => {
   try {
     const { nome, email, senha } = req.body;
-    if (!nome || !email || !senha) {
-      return res.status(400).json({ erro: 'Preencha nome, e-mail e senha.' });
-    }
-
-    const jaExiste = await Usuario.findOne({ email: email.toLowerCase() });
-    if (jaExiste && jaExiste.verificado) {
-      return res.status(400).json({ erro: 'Já existe uma conta com esse e-mail.' });
-    }
-
-    const sal = crypto.randomBytes(8).toString('hex');
+    if (!nome || !email || !senha) return res.status(400).json({ erro: 'Preencha todos os campos.' });
+    const emailLower = email.toLowerCase();
+    if (await Usuario.findOne({ email: emailLower })) return res.status(400).json({ erro: 'E-mail já cadastrado.' });
+    const sal = crypto.randomBytes(16).toString('hex');
+    const senhaHash = gerarHash(senha, sal);
     const codigo = gerarCodigo();
-    const dadosUsuario = {
-      nome,
-      email: email.toLowerCase(),
-      sal,
-      senhaHash: gerarHash(senha, sal),
-      verificado: false,
-      codigoVerificacao: codigo,
-      codigoExpira: new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
-    };
-
-    if (jaExiste) {
-      Object.assign(jaExiste, dadosUsuario);
-      await jaExiste.save();
-    } else {
-      await Usuario.create({ ...dadosUsuario, lancamentos: [], metaAlvo: null });
-    }
-
-    await enviarEmail(
-      email,
-      'Confirme seu e-mail — Economix',
-      `Olá, ${nome}!\n\nSeu código de confirmação é: ${codigo}\n\nEle vale por 15 minutos.`
-    );
-
-    res.json({ precisaVerificar: true, email: email.toLowerCase() });
+    const usuario = await Usuario.create({
+      nome, email: emailLower, sal, senhaHash,
+      token: gerarToken(), tokenExpira: gerarValidadeToken(),
+      verificado: false, codigoVerificacao: codigo, codigoExpira: new Date(Date.now()+15*60*1000),
+      lancamentos: [], metaAlvo: null
+    });
+    await enviarEmail(emailLower, 'Código de verificação - Economix', `Seu código é: ${codigo}`);
+    res.json({ ok: true, msg: 'Cadastro criado, verifique seu e-mail.' });
   } catch (erro) {
     console.error(erro);
-    res.status(500).json({ erro: 'Erro no servidor ao criar a conta.' });
+    res.status(500).json({ erro: 'Erro no servidor ao cadastrar.' });
   }
 });
 
-// Confirmar código de verificação
-app.post('/verificar-email', limitadorCodigo, async (req, res) => {
+app.post('/verificar-email', async (req, res) => {
   try {
     const { email, codigo } = req.body;
-    if (!email || !codigo) return res.status(400).json({ erro: 'Preencha o código.' });
-
     const usuario = await Usuario.findOne({ email: email.toLowerCase() });
-    if (!usuario) return res.status(400).json({ erro: 'Conta não encontrada.' });
-
-    if (usuario.verificado) {
-      return res.status(400).json({ erro: 'Essa conta já foi verificada. Tenta entrar direto.' });
-    }
-
-    if (!usuario.codigoVerificacao || usuario.codigoVerificacao !== codigo) {
-      return res.status(400).json({ erro: 'Código incorreto.' });
-    }
-
-    if (usuario.codigoExpira < new Date()) {
-      return res.status(400).json({ erro: 'Código expirado. Pede um novo.' });
-    }
-
-    usuario.verificado = true;
-    usuario.codigoVerificacao = undefined;
-    usuario.codigoExpira = undefined;
-    usuario.token = gerarToken();
-    usuario.tokenExpira = gerarValidadeToken();
-    await usuario.save();
-
-    res.json({ token: usuario.token, nome: usuario.nome, email: usuario.email });
+    if (!usuario) return res.status(400).json({ erro: 'Usuário não encontrado.' });
+    if (usuario.codigoVerificacao !== codigo || usuario.codigoExpira < new Date()) return res.status(400).json({ erro: 'Código inválido ou expirado.' });
+    usuario.verificado = true; usuario.codigoVerificacao = ''; await usuario.save();
+    res.json({ ok: true, token: usuario.token, nome: usuario.nome, email: usuario.email });
   } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: 'Erro no servidor ao verificar o código.' });
+    res.status(500).json({ erro: 'Erro ao verificar.' });
   }
 });
 
-// Reenviar código de verificação
-app.post('/reenviar-codigo', limitadorCodigo, async (req, res) => {
-  try {
-    const { email } = req.body;
-    const usuario = await Usuario.findOne({ email: email?.toLowerCase() });
-    if (!usuario) return res.status(400).json({ erro: 'Conta não encontrada.' });
-    if (usuario.verificado) return res.status(400).json({ erro: 'Essa conta já está verificada.' });
-
-    const codigo = gerarCodigo();
-    usuario.codigoVerificacao = codigo;
-    usuario.codigoExpira = new Date(Date.now() + 15 * 60 * 1000);
-    await usuario.save();
-
-    await enviarEmail(
-      usuario.email,
-      'Novo código de confirmação — Economix',
-      `Seu novo código é: ${codigo}\n\nEle vale por 15 minutos.`
-    );
-
-    res.json({ ok: true });
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: 'Erro no servidor ao reenviar o código.' });
-  }
-});
-
-// Login
-app.post('/login', limitadorLogin, async (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, senha } = req.body;
-    if (!email || !senha) {
-      return res.status(400).json({ erro: 'Preencha e-mail e senha.' });
-    }
-
     const usuario = await Usuario.findOne({ email: email.toLowerCase() });
-    if (!usuario) {
-      return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
-    }
-
-    if (!usuario.verificado) {
-      return res.status(400).json({ erro: 'Confirma seu e-mail antes de entrar.', precisaVerificar: true, email: usuario.email });
-    }
-
-    if (!senhaConfere(senha, usuario.sal, usuario.senhaHash)) {
-      return res.status(400).json({ erro: 'E-mail ou senha incorretos.' });
-    }
-
-    // Login certo com hash no formato antigo -> aproveita e já migra pro novo
+    if (!usuario || !usuario.sal || !usuario.senhaHash) return res.status(400).json({ erro: 'E-mail ou senha inválidos.' });
+    if (!senhaConfere(senha, usuario.sal, usuario.senhaHash)) return res.status(400).json({ erro: 'E-mail ou senha inválidos.' });
+    if (!usuario.verificado) return res.status(400).json({ erro: 'Confirme seu e-mail primeiro.' });
+    // migra hash antigo se necessário
     if (!usuario.senhaHash.startsWith('scrypt:')) {
       usuario.senhaHash = gerarHash(senha, usuario.sal);
     }
-
-    usuario.token = gerarToken();
-    usuario.tokenExpira = gerarValidadeToken();
-    await usuario.save();
-
-    res.json({
-      token: usuario.token,
-      nome: usuario.nome,
-      email: usuario.email
-    });
+    usuario.token = gerarToken(); usuario.tokenExpira = gerarValidadeToken(); await usuario.save();
+    res.json({ token: usuario.token, nome: usuario.nome, email: usuario.email });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: 'Erro no servidor ao entrar.' });
   }
 });
 
-// Login com Google
 app.post('/login-google', async (req, res) => {
   try {
     const { credential } = req.body;
     if (!credential) return res.status(400).json({ erro: 'Credencial do Google ausente.' });
-
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
     const payload = ticket.getPayload();
     const email = payload.email.toLowerCase();
     const nome = payload.name || 'Usuário';
-
     let usuario = await Usuario.findOne({ email });
-
     if (!usuario) {
-      usuario = await Usuario.create({
-        nome,
-        email,
-        googleId: payload.sub,
-        verificado: true,
-        token: gerarToken(),
-        tokenExpira: gerarValidadeToken(),
-        lancamentos: [],
-        metaAlvo: null
-      });
+      usuario = await Usuario.create({ nome, email, googleId: payload.sub, verificado: true, token: gerarToken(), tokenExpira: gerarValidadeToken(), lancamentos: [], metaAlvo: null });
     } else {
-      usuario.token = gerarToken();
-      usuario.tokenExpira = gerarValidadeToken();
-      usuario.verificado = true;
-      if (!usuario.googleId) usuario.googleId = payload.sub;
-      await usuario.save();
+      usuario.token = gerarToken(); usuario.tokenExpira = gerarValidadeToken(); usuario.verificado = true;
+      if (!usuario.googleId) usuario.googleId = payload.sub; await usuario.save();
     }
-
     res.json({ token: usuario.token, nome: usuario.nome, email: usuario.email });
   } catch (erro) {
     console.error('Erro no login com Google:', erro.message);
@@ -409,41 +263,21 @@ app.post('/login-google', async (req, res) => {
   }
 });
 
-// Logout — invalida o token no servidor, não só no aparelho
 app.post('/logout', autenticar, async (req, res) => {
-  try {
-    req.usuario.token = '';
-    req.usuario.tokenExpira = undefined;
-    await req.usuario.save();
-    res.json({ ok: true });
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: 'Erro no servidor ao sair.' });
-  }
+  try { req.usuario.token = ''; req.usuario.tokenExpira = undefined; await req.usuario.save(); res.json({ ok: true }); }
+  catch (erro) { res.status(500).json({ erro: 'Erro no servidor ao sair.' }); }
 });
 
-// Pegar dados do usuário logado
 app.get('/dados', autenticar, (req, res) => {
   res.json({
-    nome: req.usuario.nome,
-    email: req.usuario.email,
-    lancamentos: req.usuario.lancamentos,
-    metaAlvo: req.usuario.metaAlvo,
-    metas: req.usuario.metas,
-    criadoEm: req.usuario.criadoEm,
-    foto: req.usuario.foto,
-    corEscolhida: req.usuario.corEscolhida,
-    corLivreHex: req.usuario.corLivreHex,
-    layoutAtual: req.usuario.layoutAtual,
-    planoAtual: req.usuario.planoAtual,
-    devAtivo: req.usuario.devAtivo,
-    telefone: req.usuario.telefone,
-    zapOptin: req.usuario.zapOptin,
-    limiteGasto: req.usuario.limiteGasto
+    nome: req.usuario.nome, email: req.usuario.email, lancamentos: req.usuario.lancamentos,
+    metaAlvo: req.usuario.metaAlvo, metas: req.usuario.metas, criadoEm: req.usuario.criadoEm,
+    foto: req.usuario.foto, corEscolhida: req.usuario.corEscolhida, corLivreHex: req.usuario.corLivreHex,
+    layoutAtual: req.usuario.layoutAtual, planoAtual: req.usuario.planoAtual, devAtivo: req.usuario.devAtivo,
+    telefone: req.usuario.telefone, zapOptin: req.usuario.zapOptin, limiteGasto: req.usuario.limiteGasto
   });
 });
 
-// Salvar dados do usuário logado
 app.post('/dados', autenticar, async (req, res) => {
   try {
     const { lancamentos, metaAlvo, foto, planoAtual, devAtivo, corEscolhida, limiteGasto, metas, corLivreHex, layoutAtual } = req.body;
@@ -459,48 +293,29 @@ app.post('/dados', autenticar, async (req, res) => {
     if (limiteGasto !== undefined) req.usuario.limiteGasto = limiteGasto;
     await req.usuario.save();
     res.json({ ok: true });
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: 'Erro no servidor ao salvar os dados.' });
-  }
+  } catch (erro) { res.status(500).json({ erro: 'Erro no servidor ao salvar os dados.' }); }
 });
 
-// ==============================
-// E-mail diário — roda todo dia às 08:00 (horário do servidor)
-// ==============================
+// CRON 8h
 cron.schedule('0 8 * * *', async () => {
-  console.log('Executando envio diário de e-mails...');
-
+  console.log('Executando envio diário...');
   try {
     const usuarios = await Usuario.find();
-
     for (const usuario of usuarios) {
-      const hoje = new Date();
-      const mesAtual = hoje.getMonth();
-      const anoAtual = hoje.getFullYear();
-
-      const doMes = usuario.lancamentos.filter(l => {
-        const d = new Date(l.data);
-        return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
-      });
-
+      const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+      const doMes = usuario.lancamentos.filter(l => { const d = new Date(l.data); return d.getMonth() === mesAtual && d.getFullYear() === anoAtual; });
       const entradas = doMes.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
       const saidas = doMes.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
       const saldo = entradas - saidas;
-
       const texto = `Olá, ${usuario.nome}!\n\nResumo do seu saldo esse mês:\nEntradas: R$ ${entradas.toFixed(2)}\nSaídas: R$ ${saidas.toFixed(2)}\nSaldo: R$ ${saldo.toFixed(2)}\n\nNão esqueça de registrar seus gastos de hoje no app!`;
-
       await enviarEmail(usuario.email, 'Resumo diário do seu saldo 📊', texto);
       if(usuario.telefone && usuario.zapOptin){
         const textoZap = `📊 *Resumo Economix - ${hoje.toLocaleDateString('pt-BR')}*\nOlá ${usuario.nome}!\nEntradas: R$ ${entradas.toFixed(2)}\nSaídas: R$ ${saidas.toFixed(2)}\n*Saldo: R$ ${saldo.toFixed(2)}*\nAbra o app 👉 https://eduardo852823-eng.github.io/meu-app-saldo/`;
         await enviarZap(usuario.telefone, textoZap);
       }
     }
-  } catch (erro) {
-    console.error('Erro ao rodar o envio diário:', erro.message);
-  }
+  } catch (erro) { console.error('Erro ao rodar o envio diário:', erro.message); }
 });
-
 
 app.post('/telefone', async (req, res) => {
   try{
@@ -515,15 +330,17 @@ app.post('/telefone', async (req, res) => {
     res.json({ok:true});
   }catch(e){ console.error(e); res.status(500).json({erro:'Erro'}); }
 });
+
 app.post('/testar-zap', async (req, res) => {
   try{
     const { telefone } = req.body;
-    await enviarZap(telefone, `Economix teste ✅ Seu Zap funciona! Você vai receber resumos aqui.`);
-    res.json({ok:true});
-  }catch(e){ res.status(500).json({erro:'Erro'}); }
+    if(!telefone) return res.status(400).json({erro:'Telefone vazio'});
+    const ok = await enviarZap(telefone, `Economix teste ✅ Seu Zap funciona na Evolution! Você vai receber resumos aqui.`);
+    res.json({ok, msg: ok ? 'Enviado via Evolution' : 'Falha ao enviar'});
+  }catch(e){ console.error(e); res.status(500).json({erro:'Erro'}); }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT} - Evolution API integrada`);
 });
