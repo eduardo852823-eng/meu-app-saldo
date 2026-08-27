@@ -93,6 +93,9 @@ const tabsDica = document.getElementById('tabsDica');
 // Config / perfil
 const configNome = document.getElementById('configNome');
 const configEmail = document.getElementById('configEmail');
+const configTelefone = document.getElementById('configTelefone');
+const configZapOptin = document.getElementById('configZapOptin');
+const configTelefoneErro = document.getElementById('configTelefoneErro');
 const btnSalvarPerfil = document.getElementById('btnSalvarPerfil');
 const btnFoto = document.getElementById('btnFoto');
 const inputFoto = document.getElementById('inputFoto');
@@ -658,14 +661,33 @@ function abrirConfig() {
   configFullscreen.classList.remove('escondido');
   painelPerfilTopo.classList.add('escondido');
   document.body.style.overflow = 'hidden';
+  atualizarVisibilidadeFab();
 }
 
 document.getElementById('btnConfig').addEventListener('click', abrirConfig);
 btnFecharConfig.addEventListener('click', () => {
   configFullscreen.classList.add('escondido');
   document.body.style.overflow = '';
+  atualizarVisibilidadeFab();
 });
 btnPerfilConfig.addEventListener('click', abrirConfig);
+
+// --- FAB (+) só aparece na Home/Dashboard (aba "lancar"); some em todas as outras telas ---
+function atualizarVisibilidadeFab() {
+  const fab = document.getElementById('fabAdd');
+  if (!fab) return;
+  const configAberta = !configFullscreen.classList.contains('escondido');
+  const abaAtualBtn = document.querySelector('.tab-btn.active, [data-tab].active');
+  const abaAtual = abaAtualBtn ? abaAtualBtn.dataset.tab : 'lancar';
+  const deveMostrar = (abaAtual === 'lancar') && !configAberta;
+  if (deveMostrar) {
+    fab.style.pointerEvents = 'auto';
+    fab.classList.remove('fab-escondido');
+  } else {
+    fab.style.pointerEvents = 'none';
+    fab.classList.add('fab-escondido');
+  }
+}
 
 configSideItens.forEach(item => {
   item.addEventListener('click', () => {
@@ -787,9 +809,22 @@ document.getElementById('btnFecharDetalhePlano').addEventListener('click', () =>
 function carregarCamposPerfil() {
   configNome.value = nomeUsuario;
   configEmail.value = emailUsuario;
+  if (configTelefone) configTelefone.value = formatarTelefoneExibicao(localStorage.getItem('saldo_telefone') || '');
+  if (configZapOptin) configZapOptin.checked = localStorage.getItem('saldo_zap_pulado') !== '1';
   perfilFotoImg.src = fotoUsuario || AVATAR_PADRAO;
   perfilFotoImg.style.display = 'block';
   perfilFotoPlaceholder.style.display = 'none';
+}
+
+// Aceita o telefone com ou sem máscara e devolve só números pra exibir formatado
+function formatarTelefoneExibicao(numeros) {
+  const d = String(numeros || '').replace(/\D/g, '').replace(/^55/, '');
+  if (d.length < 10) return numeros ? d : '';
+  const ddd = d.slice(0, 2);
+  const resto = d.slice(2);
+  return resto.length === 9
+    ? `(${ddd}) ${resto.slice(0,5)}-${resto.slice(5)}`
+    : `(${ddd}) ${resto.slice(0,4)}-${resto.slice(4)}`;
 }
 
 btnFoto.addEventListener('click', () => {
@@ -906,7 +941,23 @@ document.getElementById('btnConfirmarCrop').addEventListener('click', () => {
   modalCropFoto.classList.add('escondido');
 });
 
-btnSalvarPerfil.addEventListener('click', () => {
+btnSalvarPerfil.addEventListener('click', async () => {
+  const telDigitado = configTelefone ? configTelefone.value.trim() : '';
+  const telLimpo = telDigitado.replace(/\D/g, '');
+  // WhatsApp obrigatório: precisa de DDD + número (10 ou 11 dígitos, com ou sem o 55 na frente)
+  const telValido = telLimpo.length >= 10 && telLimpo.length <= 13;
+  if (configTelefoneErro) configTelefoneErro.style.display = 'none';
+  if (!telValido) {
+    if (configTelefoneErro) {
+      configTelefoneErro.textContent = 'Coloca um número de WhatsApp válido, com DDD (ex: (61) 99999-9999).';
+      configTelefoneErro.style.display = 'block';
+    } else {
+      alert('Coloca um número de WhatsApp válido, com DDD.');
+    }
+    if (configTelefone) configTelefone.focus();
+    return;
+  }
+
   const nome = configNome.value.trim();
   if (nome) {
     nomeUsuario = nome;
@@ -914,6 +965,18 @@ btnSalvarPerfil.addEventListener('click', () => {
   }
   emailUsuario = configEmail.value.trim();
   salvar();
+
+  const optin = configZapOptin ? configZapOptin.checked : true;
+  btnSalvarPerfil.disabled = true;
+  const textoOriginal = btnSalvarPerfil.textContent;
+  btnSalvarPerfil.textContent = 'Salvando...';
+  try {
+    await salvarTelefoneZap(telLimpo, optin);
+  } finally {
+    btnSalvarPerfil.disabled = false;
+    btnSalvarPerfil.textContent = textoOriginal;
+  }
+
   alert('Perfil salvo!');
 });
 
@@ -1359,8 +1422,12 @@ tabBtns.forEach(btn => {
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add('ativo');
     tabsDica.textContent = DICAS_ABA[btn.dataset.tab] || '';
+    atualizarVisibilidadeFab();
   });
 });
+
+// Garante o estado correto do FAB assim que o app carrega
+atualizarVisibilidadeFab();
 
 // --- Atalhos de teclado ---
 document.addEventListener('keydown', (e) => {
@@ -2489,13 +2556,21 @@ async function salvarTelefoneZap(telefone, optin){
   const telLimpo = telefone.replace(/\D/g,'');
   if(telLimpo.length < 10){ alert('Número inválido, coloca DDD. Ex: 61999999999'); return false; }
   localStorage.setItem('saldo_telefone', telLimpo);
+  localStorage.setItem('saldo_zap_pulado', optin ? '0' : '1');
   localStorage.setItem('zap_perguntou_hoje', new Date().toISOString().slice(0,10));
+  let enviouBoasVindas = false;
   if(typeof tokenSessao !== 'undefined' && tokenSessao){
-    try{ await fetch(API_URL + '/telefone', { method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+tokenSessao}, body:JSON.stringify({telefone:telLimpo, zapOptin:optin}) }); }catch(e){}
+    try{
+      const resp = await fetch(API_URL + '/telefone', { method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+tokenSessao}, body:JSON.stringify({telefone:telLimpo, zapOptin:optin}) });
+      enviouBoasVindas = resp.ok && optin; // /telefone já dispara a mensagem de boas-vindas no servidor quando optin=true
+    }catch(e){}
   } else {
     localStorage.setItem('telefone_pendente_para_servidor', JSON.stringify({telefone:telLimpo, zapOptin:optin}));
   }
-  try{ await fetch(API_URL + '/testar-zap', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({telefone:telLimpo}) }); }catch(e){}
+  // Só usa /testar-zap como fallback (ex: sem sessão logada) pra não mandar 2 mensagens seguidas
+  if(optin && !enviouBoasVindas){
+    try{ await fetch(API_URL + '/testar-zap', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({telefone:telLimpo}) }); }catch(e){}
+  }
   return true;
 }
 document.addEventListener('DOMContentLoaded', ()=>{

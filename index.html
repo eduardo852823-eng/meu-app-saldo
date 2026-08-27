@@ -388,7 +388,15 @@
           </div>
           <label class="campo-label">E-mail (avisos dentro do app)</label>
           <input type="email" id="configEmail" placeholder="seuemail@gmail.com">
-          <p class="campo-aviso">Você recebe um resumo por e-mail todo dia às 8h, além dos avisos aqui dentro do app.</p>
+
+          <label class="campo-label" style="margin-top:14px;">📱 WhatsApp (resumos diários)</label>
+          <input type="tel" id="configTelefone" placeholder="(61) 99999-9999" inputmode="tel" required>
+          <label style="display:flex;gap:8px;align-items:center;margin:8px 0 4px;font-size:13px;color:var(--text-dim);">
+            <input type="checkbox" id="configZapOptin" checked> Receber resumo todo dia às 8h no WhatsApp
+          </label>
+          <div id="configTelefoneErro" class="auth-erro" style="display:none;"></div>
+
+          <p class="campo-aviso">Você recebe um resumo por e-mail todo dia às 8h, além dos avisos aqui dentro do app e no Zap se ativar.</p>
           <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
         </div>
 
