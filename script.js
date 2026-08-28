@@ -806,6 +806,12 @@ function abrirDetalhePlano(plano) {
 document.getElementById('btnFecharDetalhePlano').addEventListener('click', () => modalDetalhePlano.classList.add('escondido'));
 
 // --- Perfil (nome, e-mail, foto) ---
+if (configTelefone) {
+  configTelefone.addEventListener('input', () => {
+    configTelefone.value = formatarTelefoneExibicao(configTelefone.value);
+  });
+}
+
 function carregarCamposPerfil() {
   configNome.value = nomeUsuario;
   configEmail.value = emailUsuario;
@@ -934,7 +940,12 @@ document.getElementById('btnCancelarCrop').addEventListener('click', () => {
 
 let cropDestino = null;
 document.getElementById('btnConfirmarCrop').addEventListener('click', () => {
-  fotoUsuario = cropCanvas.toDataURL('image/jpeg', 0.88);
+  // Comprime a foto final pra não pesar: reduz pra 200x200 e qualidade 0.7 antes de salvar
+  const canvasFinal = document.createElement('canvas');
+  canvasFinal.width = 200;
+  canvasFinal.height = 200;
+  canvasFinal.getContext('2d').drawImage(cropCanvas, 0, 0, 200, 200);
+  fotoUsuario = canvasFinal.toDataURL('image/jpeg', 0.7);
   salvar();
   atualizarBotaoPerfilTopo();
   carregarCamposPerfil();
@@ -961,7 +972,7 @@ btnSalvarPerfil.addEventListener('click', async () => {
   const nome = configNome.value.trim();
   if (nome) {
     nomeUsuario = nome;
-    saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+    saudacaoEl.textContent = `Olá, ${nomeUsuario} 👋`;
   }
   emailUsuario = configEmail.value.trim();
   salvar();
@@ -996,14 +1007,31 @@ btnSalvarLimite.addEventListener('click', () => {
 });
 
 function atualizarAvisoLimite() {
-  if (!limiteGasto) { limiteAvisoEl.textContent = ''; return; }
+  const barraWrap = document.getElementById('limiteBarraWrap');
+  const barraFill = document.getElementById('limiteBarraFill');
+  if (!limiteGasto) {
+    limiteAvisoEl.textContent = '';
+    if (barraWrap) barraWrap.style.display = 'none';
+    return;
+  }
   const chaveAtual = chaveMes(new Date());
   const gastoMes = lancamentosAtivos()
     .filter(l => l.tipo === 'saida' && chaveMes(l.data) === chaveAtual)
     .reduce((s, l) => s + l.valor, 0);
 
+  const pct = Math.min(100, (gastoMes / limiteGasto) * 100);
+  if (barraWrap && barraFill) {
+    barraWrap.style.display = 'block';
+    barraFill.style.width = pct + '%';
+    barraFill.classList.toggle('perigo', gastoMes >= limiteGasto);
+    barraFill.classList.toggle('alerta', pct >= 80 && gastoMes < limiteGasto);
+  }
+
   if (gastoMes >= limiteGasto) {
     limiteAvisoEl.textContent = `⚠️ Você já passou do limite de ${formatarMoeda(limiteGasto)} esse mês (gastou ${formatarMoeda(gastoMes)}).`;
+    limiteAvisoEl.className = 'limite-aviso perigo';
+  } else if (pct >= 80) {
+    limiteAvisoEl.textContent = `😬 Cuidado! Já foi ${pct.toFixed(0)}% do limite de ${formatarMoeda(limiteGasto)} (gastou ${formatarMoeda(gastoMes)}).`;
     limiteAvisoEl.className = 'limite-aviso perigo';
   } else {
     limiteAvisoEl.textContent = `Gastou ${formatarMoeda(gastoMes)} de ${formatarMoeda(limiteGasto)} esse mês.`;
@@ -1020,6 +1048,53 @@ function preencherCategorias() {
     opt.textContent = `${cat.icone}  ${cat.nome}`;
     selectCat.appendChild(opt);
   });
+  preencherChipsCategoria();
+}
+
+// --- Chips de categoria (clicáveis, em vez do select) ---
+const chipsCategoriaEl = document.getElementById('chipsCategoria');
+function preencherChipsCategoria() {
+  if (!chipsCategoriaEl) return;
+  chipsCategoriaEl.innerHTML = '';
+  Object.entries(CATEGORIAS).forEach(([chave, cat]) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip-categoria';
+    chip.dataset.categoria = chave;
+    chip.innerHTML = `<span>${cat.icone}</span> ${cat.nome}`;
+    chip.addEventListener('click', () => {
+      const jaAtiva = chip.classList.contains('ativa');
+      chipsCategoriaEl.querySelectorAll('.chip-categoria').forEach(c => c.classList.remove('ativa'));
+      selectCat.value = jaAtiva ? '' : chave; // clicar de novo desmarca
+      if (!jaAtiva) chip.classList.add('ativa');
+    });
+    chipsCategoriaEl.appendChild(chip);
+  });
+}
+function sincronizarChipAtiva() {
+  if (!chipsCategoriaEl) return;
+  chipsCategoriaEl.querySelectorAll('.chip-categoria').forEach(c =>
+    c.classList.toggle('ativa', c.dataset.categoria === selectCat.value)
+  );
+}
+
+// --- Sheet do formulário (abre de baixo pra cima ao clicar no FAB) ---
+const sheetFormOverlay = document.getElementById('sheetFormOverlay');
+function abrirSheetForm() {
+  if (!sheetFormOverlay) return;
+  sheetFormOverlay.classList.remove('escondido');
+  requestAnimationFrame(() => sheetFormOverlay.classList.add('mostrar'));
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => { const d = document.getElementById('descricao'); if (d) d.focus(); }, 300);
+}
+function fecharSheetForm() {
+  if (!sheetFormOverlay) return;
+  sheetFormOverlay.classList.remove('mostrar');
+  document.body.style.overflow = '';
+  setTimeout(() => sheetFormOverlay.classList.add('escondido'), 300);
+}
+if (sheetFormOverlay) {
+  sheetFormOverlay.addEventListener('click', (e) => { if (e.target === sheetFormOverlay) fecharSheetForm(); });
 }
 
 // --- Ocultar/mostrar saldo ---
@@ -1073,7 +1148,7 @@ function verificarNome() {
   if (nomeUsuario) {
     modalBoasVindas.classList.add('escondido');
   mostrarTutorialInicialSeNecessario();
-    saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+    saudacaoEl.textContent = `Olá, ${nomeUsuario} 👋`;
   } else {
     modalBoasVindas.classList.remove('escondido');
   }
@@ -1134,7 +1209,7 @@ async function finalizarLogin(dados) {
 
   salvar();
   aplicarGating();
-  saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+  saudacaoEl.textContent = `Olá, ${nomeUsuario} 👋`;
   atualizarBotaoPerfilTopo();
   modalBoasVindas.classList.add('escondido');
   mostrarTutorialInicialSeNecessario();
@@ -1254,7 +1329,7 @@ btnSemConta.addEventListener('click', () => {
   if (!nome || !nome.trim()) return;
   nomeUsuario = nome.trim();
   salvar();
-  saudacaoEl.textContent = `Olá, ${nomeUsuario}`;
+  saudacaoEl.textContent = `Olá, ${nomeUsuario} 👋`;
   modalBoasVindas.classList.add('escondido');
   mostrarTutorialInicialSeNecessario();
 });
@@ -1636,7 +1711,13 @@ form.addEventListener('submit', (e) => {
   salvar();
   renderizarTudo();
   form.reset();
-  inputDesc.focus();
+  sincronizarChipAtiva();
+  fecharSheetForm();
+
+  // Confetti quando é um ganho (não em edição, nem em lançamento recorrente em lote)
+  if (itemRecemCriado && itemRecemCriado.tipo === 'entrada' && window.confetti) {
+    confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
+  }
 
   if (itemRecemCriado) {
     const texto = itemRecemCriado.tipo === 'entrada'
@@ -1698,7 +1779,16 @@ function renderizarTudo() {
     blocosMeses.appendChild(bloco);
   });
 
-  vazio.classList.toggle('mostrar', lancamentos.length === 0);
+  const semResultado = filtrados.length === 0;
+  vazio.classList.toggle('mostrar', semResultado);
+  if (semResultado) {
+    if (termoBusca) {
+      const span = vazio.querySelector('span');
+      if (span) span.textContent = MENSAGENS_VAZIO_BUSCA;
+    } else {
+      mostrarMensagemVaziaFofa();
+    }
+  }
   atualizarResumo(false);
   atualizarMeta();
   atualizarBarraHeroMeta();
@@ -1721,6 +1811,7 @@ function criarItemEl(item) {
 
   const cat = item.categoria ? CATEGORIAS[item.categoria] : null;
   const icone = cat ? cat.icone : ICONE_TIPO[item.tipo];
+  const corCat = item.categoria ? `cat-cor-${item.categoria}` : (item.tipo === 'saida' ? 'cat-cor-saida' : 'cat-cor-entrada');
   const sinal = item.tipo === 'saida' ? '-' : '+';
   const dataFormatada = item.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const tagRecorrente = item.recorrente ? `<span class="item-cat-tag">🔁 Fixo${item.diaRecorrente ? ' (dia ' + item.diaRecorrente + ')' : ''}</span>` : '';
@@ -1739,7 +1830,7 @@ function criarItemEl(item) {
   }
 
   li.innerHTML = `
-    <div class="item-icone">${icone}</div>
+    <div class="item-icone ${corCat}">${icone}</div>
     <div class="item-info">
       <div class="item-desc">${escapeHTML(item.descricao)}</div>
       <div class="item-data">${dataFormatada}</div>
@@ -1889,9 +1980,10 @@ function iniciarEdicao(item) {
   inputValor.value = item.valor;
   btnsTipo.forEach(b => b.classList.toggle('active', b.dataset.tipo === item.tipo));
   tipoAtual = item.tipo;
+  if (item.categoria) selectCat.value = item.categoria;
+  sincronizarChipAtiva();
   btnSubmit.querySelector('span').textContent = 'Salvar edição';
-  inputDesc.focus();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  abrirSheetForm();
 }
 
 // --- Remover item ---
@@ -1904,7 +1996,21 @@ function removerItem(id, elemento) {
   }, 280);
 }
 
-// --- Resumo (saldo, entradas, saídas) ---
+// --- Mensagens fofas nos estados vazios ---
+const MENSAGENS_VAZIO_LISTA = [
+  'Ainda não tem gasto, bora adicionar o lanche? 🍔',
+  'Tudo quietinho por aqui... hora de anotar alguma coisa? ✨',
+  'Nada lançado ainda hoje. Café da manhã não conta? ☕',
+  'Sem gastos, sem ganhos... começa por algum? 👀',
+  'Bora registrar seu primeiro gasto do dia? 🚀'
+];
+function mostrarMensagemVaziaFofa() {
+  const span = vazio.querySelector('span');
+  if (span) span.textContent = MENSAGENS_VAZIO_LISTA[Math.floor(Math.random() * MENSAGENS_VAZIO_LISTA.length)];
+}
+
+const MENSAGENS_VAZIO_BUSCA = 'Não achei nada com esse nome 🔍 tenta outra palavra?';
+
 function atualizarResumo(pulsar) {
   const ativos = lancamentosAtivos();
   const entradas = ativos.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
@@ -2596,7 +2702,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(()=>{
     aplicarModoDemoSeVazio(); atualizarStreak(); verificarTelefonePendente();
     const btnDemo=document.getElementById('btnLimparDemo'); if(btnDemo) btnDemo.addEventListener('click', limparDemo);
-    const fab=document.getElementById('fabAdd'); if(fab) fab.addEventListener('click', ()=>{ const f=document.getElementById('formLancamento'); if(f) f.scrollIntoView({behavior:'smooth'}); const d=document.getElementById('descricao'); if(d) d.focus(); });
+    const fab=document.getElementById('fabAdd'); if(fab) fab.addEventListener('click', ()=>{ abrirSheetForm(); });
     const btnSalvarTel=document.getElementById('btnSalvarTelefone'); const btnPularTel=document.getElementById('btnPularTelefone');
     if(btnSalvarTel) btnSalvarTel.addEventListener('click', async ()=>{ const input=document.getElementById('inputTelefoneZap'); const check=document.getElementById('checkZapOptin'); const tel=input?input.value:''; const optin=check?check.checked:true; if(!tel){ alert('Coloca seu número'); return; } btnSalvarTel.textContent='Salvando...'; const ok=await salvarTelefoneZap(tel,optin); btnSalvarTel.textContent='Ativar alertas no Zap'; if(ok){ document.getElementById('modalTelefone').classList.add('escondido'); if(window.confetti) confetti({particleCount:100}); } });
     if(btnPularTel) btnPularTel.addEventListener('click', ()=>{ localStorage.setItem('saldo_zap_pulado','1'); localStorage.setItem('zap_perguntou_hoje', new Date().toISOString().slice(0,10)); document.getElementById('modalTelefone').classList.add('escondido'); });

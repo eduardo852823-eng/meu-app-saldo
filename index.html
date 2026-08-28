@@ -153,54 +153,6 @@
   <!-- ABA LANÇAR -->
   <section class="tab-conteudo ativo" id="tab-lancar">
 
-    <section class="painel">
-      <form id="formLancamento" class="form-lanc">
-        <div class="form-row">
-          <input type="text" id="descricao" placeholder="Ex: Lanche, mesada, jogo..." required maxlength="40">
-          <input type="number" id="valor" placeholder="0,00" step="0.01" min="0.01" required>
-        </div>
-
-        <div class="form-row" id="linhaCategoria" style="display:none;">
-          <select id="categoria" class="select-cat"></select>
-        </div>
-
-        <div class="form-row form-row-tipo">
-          <div class="tipo-toggle">
-            <button type="button" class="tipo-btn tipo-saida active" data-tipo="saida">
-              <span class="seta">↓</span> Gastei
-            </button>
-            <button type="button" class="tipo-btn tipo-entrada" data-tipo="entrada">
-              <span class="seta">↑</span> Recebi
-            </button>
-          </div>
-          <button type="submit" class="btn-add" id="btnSubmit">
-            <span>Adicionar</span>
-          </button>
-        </div>
-
-        <label class="check-recorrente" id="linhaRecorrente" style="display:none;">
-          <input type="checkbox" id="checkRecorrente">
-          <span>Repetir todo mês (gasto/ganho fixo)</span>
-        </label>
-        <div id="linhaDiaRecorrente" style="display:none;margin-top:8px;">
-          <label class="campo-label" style="margin-top:0;">Em qual dia do mês?</label>
-          <select id="diaRecorrente" class="select-cat" style="margin-bottom:8px;">
-            <!-- opções preenchidas via JS: dia 1 a 31 -->
-          </select>
-          <label class="check-recorrente" style="margin-top:8px;">
-            <input type="checkbox" id="checkAplicarEsteMes" checked>
-            <span>Já aplicar esse mês também</span>
-          </label>
-          <label class="campo-label">Por quantos meses repetir?</label>
-          <input type="number" id="quantosMeses" placeholder="Ex: 12" min="1" max="60" value="6">
-          <p class="campo-aviso" id="previewFimRecorrente" style="color:var(--blue-bright);font-weight:600;"></p>
-          <p class="campo-aviso">O app já cria todos os lançamentos futuros de uma vez — não precisa voltar aqui todo mês.</p>
-        </div>
-
-        <div class="dica-teclado">Enter adiciona · Esc cancela edição</div>
-      </form>
-    </section>
-
     <section class="painel" id="painelBusca" style="display:none;">
       <input type="text" id="buscaLancamento" placeholder="🔍 Buscar por nome...">
     </section>
@@ -212,6 +164,9 @@
       <div class="form-row">
         <input type="number" id="limiteValor" placeholder="Ex: 100,00" step="0.01" min="0">
         <button id="btnSalvarLimite" class="btn-ghost-sm">Salvar</button>
+      </div>
+      <div id="limiteBarraWrap" class="limite-barra-wrap" style="display:none;">
+        <div class="limite-barra-fundo"><div id="limiteBarraFill" class="limite-barra-fill"></div></div>
       </div>
       <div id="limiteAviso" class="limite-aviso"></div>
     </section>
@@ -312,7 +267,7 @@
       </div>
       <div id="topGastos" class="top-lista"></div>
       <div id="topGastosVazio" class="vazio vazio-mini">
-        <span>Sem saídas registradas ainda.</span>
+        <span>Sem gastos ainda esse mês, tá indo bem! 🎉</span>
       </div>
     </section>
 
@@ -322,7 +277,7 @@
       </div>
       <div id="topEntradas" class="top-lista"></div>
       <div id="topEntradasVazio" class="vazio vazio-mini">
-        <span>Sem entradas registradas ainda.</span>
+        <span>Nenhum ganho registrado esse mês ainda 👛</span>
       </div>
     </section>
 
@@ -336,7 +291,7 @@
       </div>
       <div id="listaFixos" class="lista-fixos"></div>
       <div id="fixosVazio" class="vazio vazio-mini">
-        <span>Nenhum lançamento fixo criado ainda. Marque "Repetir todo mês" ao lançar.</span>
+        <span>Nenhum gasto ou ganho fixo ainda. Marca "Repetir todo mês" ao lançar! 🔁</span>
       </div>
     </section>
   </section>
@@ -397,7 +352,7 @@
           <div id="configTelefoneErro" class="auth-erro" style="display:none;"></div>
 
           <p class="campo-aviso">Você recebe um resumo por e-mail todo dia às 8h, além dos avisos aqui dentro do app e no Zap se ativar.</p>
-          <button id="btnSalvarPerfil" class="btn-add" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
+          <button id="btnSalvarPerfil" class="btn-add btn-perfil-salvar" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
         </div>
 
         <div class="config-fs-secao" id="fsPlano">
@@ -651,6 +606,58 @@
       <button id="btnCancelarValorMeta" class="link-discreto">Cancelar</button>
     </div>
   </div>
+
+<div class="sheet-overlay escondido" id="sheetFormOverlay">
+  <div class="sheet-form" id="sheetForm">
+    <div class="sheet-alca"></div>
+    <form id="formLancamento" class="form-lanc">
+      <div class="form-row">
+        <input type="text" id="descricao" placeholder="Ex: Lanche, mesada, jogo..." required maxlength="40">
+        <input type="number" id="valor" placeholder="0,00" step="0.01" min="0.01" required>
+      </div>
+
+      <div class="form-row" id="linhaCategoria" style="display:none;">
+        <div id="chipsCategoria" class="chips-categoria"></div>
+        <select id="categoria" class="select-cat" style="display:none;"></select>
+      </div>
+
+      <div class="form-row form-row-tipo">
+        <div class="tipo-toggle">
+          <button type="button" class="tipo-btn tipo-saida active" data-tipo="saida">
+            <span class="seta">↓</span> Gastei
+          </button>
+          <button type="button" class="tipo-btn tipo-entrada" data-tipo="entrada">
+            <span class="seta">↑</span> Recebi
+          </button>
+        </div>
+        <button type="submit" class="btn-add" id="btnSubmit">
+          <span>Adicionar</span>
+        </button>
+      </div>
+
+      <label class="check-recorrente" id="linhaRecorrente" style="display:none;">
+        <input type="checkbox" id="checkRecorrente">
+        <span>Repetir todo mês (gasto/ganho fixo)</span>
+      </label>
+      <div id="linhaDiaRecorrente" style="display:none;margin-top:8px;">
+        <label class="campo-label" style="margin-top:0;">Em qual dia do mês?</label>
+        <select id="diaRecorrente" class="select-cat" style="margin-bottom:8px;">
+          <!-- opções preenchidas via JS: dia 1 a 31 -->
+        </select>
+        <label class="check-recorrente" style="margin-top:8px;">
+          <input type="checkbox" id="checkAplicarEsteMes" checked>
+          <span>Já aplicar esse mês também</span>
+        </label>
+        <label class="campo-label">Por quantos meses repetir?</label>
+        <input type="number" id="quantosMeses" placeholder="Ex: 12" min="1" max="60" value="6">
+        <p class="campo-aviso" id="previewFimRecorrente" style="color:var(--blue-bright);font-weight:600;"></p>
+        <p class="campo-aviso">O app já cria todos os lançamentos futuros de uma vez — não precisa voltar aqui todo mês.</p>
+      </div>
+
+      <div class="dica-teclado">Enter adiciona · Esc cancela edição</div>
+    </form>
+  </div>
+</div>
 
 <button id="fabAdd" class="fab" title="Novo lançamento">+</button>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>

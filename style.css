@@ -89,15 +89,7 @@ html, body {
 }
 
 .bg-grid {
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 70%);
-  z-index: 0;
-  pointer-events: none;
+  display: none;
 }
 
 body::before {
@@ -108,8 +100,8 @@ body::before {
   transform: translateX(-50%);
   width: 900px;
   height: 500px;
-  background: radial-gradient(ellipse, rgba(59,130,246,0.3), transparent 70%);
-  filter: blur(40px);
+  background: radial-gradient(ellipse, rgba(124,58,237,0.35), transparent 70%);
+  filter: blur(60px);
   z-index: 0;
   pointer-events: none;
   animation: pulseGlow 8s ease-in-out infinite;
@@ -389,6 +381,11 @@ input:focus {
 
 .btn-add:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.45); }
 .btn-add:active { transform: translateY(0); }
+.btn-perfil-salvar {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed) !important;
+  box-shadow: 0 6px 18px rgba(124,58,237,0.4) !important;
+}
+.btn-perfil-salvar:hover { box-shadow: 0 8px 20px rgba(124,58,237,0.5) !important; }
 
 /* Lista */
 .lista-header {
@@ -2141,6 +2138,98 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
 }
 
 /* Limite de gasto */
+.limite-barra-wrap { margin-top: 12px; }
+.limite-barra-fundo {
+  width: 100%; height: 10px; border-radius: 6px;
+  background: var(--panel-2); overflow: hidden;
+}
+.limite-barra-fill {
+  height: 100%; border-radius: 6px;
+  background: linear-gradient(90deg, var(--blue-bright), var(--cyan));
+  transition: width .5s ease, background .3s ease;
+}
+.limite-barra-fill.alerta { background: linear-gradient(90deg, #facc15, #f97316); }
+.limite-barra-fill.perigo { background: linear-gradient(90deg, #f87171, #b91c1c); }
+.limite-barra-fill { position: relative; overflow: hidden; }
+.limite-barra-fill::after {
+  content: "";
+  position: absolute; top: 0; left: 0; height: 100%; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  animation: brilhoLimite 2.2s linear infinite;
+}
+@keyframes brilhoLimite {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(280%); }
+}
+
+/* --- Sheet do formulário (abre de baixo pra cima ao clicar no FAB) --- */
+.sheet-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(5,7,13,0.55);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; transition: opacity .25s ease;
+}
+.sheet-overlay.mostrar { opacity: 1; }
+.sheet-overlay.escondido { display: none; }
+.sheet-form {
+  width: 100%; max-width: 520px;
+  background: var(--panel);
+  border-radius: 28px 28px 0 0;
+  padding: 10px 20px 26px;
+  box-shadow: 0 -20px 60px rgba(0,0,0,0.4);
+  transform: translateY(100%);
+  transition: transform .32s cubic-bezier(.32,.9,.35,1.1);
+  max-height: 88vh; overflow-y: auto;
+}
+.sheet-overlay.mostrar .sheet-form { transform: translateY(0); }
+.sheet-alca {
+  width: 44px; height: 5px; border-radius: 3px;
+  background: var(--card-line, rgba(255,255,255,0.15));
+  margin: 10px auto 14px;
+}
+
+/* --- Chips de categoria --- */
+.chips-categoria { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.chip-categoria {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 14px; border-radius: 100px;
+  background: var(--panel-2); border: 1.5px solid transparent;
+  color: var(--text-dim); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s ease;
+}
+.chip-categoria:hover { transform: translateY(-1px); }
+.chip-categoria.ativa {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  color: white; border-color: transparent;
+  box-shadow: 0 4px 14px rgba(124,58,237,0.4);
+}
+
+/* --- Bolinha colorida por categoria no item da lista --- */
+.item-icone { position: relative; }
+.item-icone.cat-cor-comida { box-shadow: inset 0 0 0 2px #fb923c; }
+.item-icone.cat-cor-transporte { box-shadow: inset 0 0 0 2px #38bdf8; }
+.item-icone.cat-cor-jogos { box-shadow: inset 0 0 0 2px #a78bfa; }
+.item-icone.cat-cor-lazer { box-shadow: inset 0 0 0 2px #f472b6; }
+.item-icone.cat-cor-estudos { box-shadow: inset 0 0 0 2px #34d399; }
+.item-icone.cat-cor-mesada { box-shadow: inset 0 0 0 2px #facc15; }
+.item-icone.cat-cor-outros { box-shadow: inset 0 0 0 2px #94a3b8; }
+.item-icone.cat-cor-saida { box-shadow: inset 0 0 0 2px var(--red); }
+.item-icone.cat-cor-entrada { box-shadow: inset 0 0 0 2px var(--green); }
+
+/* --- FAB respirando suavemente quando parado --- */
+.fab { animation: respirarFab 2.6s ease-in-out infinite; }
+.fab:hover, .fab:active { animation: none; }
+@keyframes respirarFab {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.fab-escondido { animation: none !important; }
+
+/* --- Botões pill bem arredondados --- */
+.btn-add, .btn-ghost-sm, .filtro-btn, .tipo-toggle .tipo-btn {
+  border-radius: 100px !important;
+}
+
 .limite-aviso {
   font-size: 12.5px;
   margin-top: 8px;
