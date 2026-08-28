@@ -76,6 +76,7 @@
       <span class="brand-name">Economix</span>
     </div>
     <div id="streakBadge" class="streak-badge" style="display:none;">🔥 0 dias</div>
+    <div id="xpBadge" class="xp-badge" style="display:none;" title="Seu nível no Economix">⭐ Nível 1</div>
     <div class="topbar-direita">
       <button id="btnPerfil" class="btn-perfil-topo" title="Sua conta">
         <img id="perfilTopoFoto" style="display:none;">
@@ -213,6 +214,7 @@
       <div class="lista-header" style="margin-bottom:14px;">
         <span>Distribuição de gastos</span>
       </div>
+      <div id="fraseInteligente" class="frase-inteligente" style="display:none;"></div>
       <div class="donut-wrap">
         <svg id="donutSvg" viewBox="0 0 120 120" width="140" height="140"></svg>
         <div class="donut-centro">
@@ -507,6 +509,7 @@
         </div>
       </div>
       <button id="btnAcaoEditar" class="btn-add" style="width:100%;margin-bottom:10px;">✎ Editar</button>
+      <button id="btnAcaoRepetir" class="btn-add" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#34d399,#059669);box-shadow:0 4px 16px rgba(52,211,153,0.35);">🔁 Repetir todo mês</button>
       <button id="btnAcaoExcluir" class="btn-add" style="width:100%;background:linear-gradient(135deg,#f87171,#b91c1c);box-shadow:0 4px 16px rgba(248,113,113,0.35);margin-bottom:10px;">✕ Excluir</button>
       <button id="btnAcaoCancelar" class="link-discreto">Cancelar</button>
     </div>
@@ -659,6 +662,7 @@
   </div>
 </div>
 
+<button id="btnCheckinRapido" class="checkin-rapido" title="Registrar o dia sem lançar valor">✅ Gastei pouco hoje</button>
 <button id="fabAdd" class="fab" title="Novo lançamento">+</button>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script src="script.js"></script>

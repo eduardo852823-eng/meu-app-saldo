@@ -335,18 +335,26 @@ coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
 const layoutGradeEl = document.getElementById('layoutGrade');
 const nivelLayout = { padrao: 'free', poupix: 'free', moderno: 'pro', cards: 'ultimate', neon: 'ultimate' };
 
+function neonLiberadoPorStreak() {
+  return localStorage.getItem('saldo_layout_neon_liberado') === '1';
+}
+function podeUsarLayout(layout) {
+  if (layout === 'neon' && neonLiberadoPorStreak()) return true;
+  return temRecurso(nivelLayout[layout]);
+}
+
 function renderizarGradeLayout() {
   layoutGradeEl.querySelectorAll('.layout-opcao').forEach(btn => {
     const layout = btn.dataset.layout;
     btn.classList.toggle('ativa', layout === layoutAtual);
-    btn.classList.toggle('bloqueada', !temRecurso(nivelLayout[layout]));
+    btn.classList.toggle('bloqueada', !podeUsarLayout(layout));
   });
 }
 
 layoutGradeEl.querySelectorAll('.layout-opcao').forEach(btn => {
   btn.addEventListener('click', () => {
     const layout = btn.dataset.layout;
-    if (!temRecurso(nivelLayout[layout])) {
+    if (!podeUsarLayout(layout)) {
       alert('Esse layout precisa de um plano superior.');
       return;
     }
@@ -675,6 +683,7 @@ btnPerfilConfig.addEventListener('click', abrirConfig);
 // --- FAB (+) só aparece na Home/Dashboard (aba "lancar"); some em todas as outras telas ---
 function atualizarVisibilidadeFab() {
   const fab = document.getElementById('fabAdd');
+  const checkinBtn = document.getElementById('btnCheckinRapido');
   if (!fab) return;
   const configAberta = !configFullscreen.classList.contains('escondido');
   const abaAtualBtn = document.querySelector('.tab-btn.active, [data-tab].active');
@@ -687,7 +696,18 @@ function atualizarVisibilidadeFab() {
     fab.style.pointerEvents = 'none';
     fab.classList.add('fab-escondido');
   }
+  if (checkinBtn) {
+    const jaFezCheckinHoje = localStorage.getItem('saldo_ultimo_registro') === new Date().toISOString().slice(0, 10);
+    checkinBtn.style.display = (deveMostrar && !jaFezCheckinHoje) ? 'flex' : 'none';
+  }
 }
+
+document.getElementById('btnCheckinRapido')?.addEventListener('click', () => {
+  registrarStreakAgora();
+  ganharXp(5);
+  atualizarVisibilidadeFab();
+  alert('Anotado! Boa, você fechou o dia 🎉');
+});
 
 configSideItens.forEach(item => {
   item.addEventListener('click', () => {
@@ -1202,6 +1222,10 @@ async function finalizarLogin(dados) {
       layoutAtual = dadosServidor.layoutAtual || 'poupix';
       limiteGasto = dadosServidor.limiteGasto ?? null;
       metas = dadosServidor.metas || [];
+      if (dadosServidor.xpPendente > 0) {
+        ganharXp(dadosServidor.xpPendente);
+        fetch(API_URL + '/xp-aplicado', { method: 'POST', headers: { Authorization: 'Bearer ' + tokenSessao } }).catch(() => {});
+      }
     }
   } catch (erroDados) {
     console.warn('Não consegui buscar os dados do servidor agora.', erroDados);
@@ -1648,9 +1672,13 @@ form.addEventListener('submit', (e) => {
 
   if (!descricao || isNaN(valor) || valor <= 0) return;
 
-  if (editandoId === null && !temRecurso('pro') && lancamentos.length >= 40) {
-    alert('Você atingiu o limite de 40 lançamentos do plano Free. Assine o Pro pra lançar sem limite.');
-    return;
+  if (editandoId === null && !temRecurso('pro')) {
+    const chaveAtual = chaveMes(new Date());
+    const lancamentosEsseMes = lancamentos.filter(l => chaveMes(l.data) === chaveAtual).length;
+    if (lancamentosEsseMes >= 20) {
+      alert('Você atingiu o limite de 20 lançamentos por mês do plano Free. Assine o Pro pra lançar sem limite.');
+      return;
+    }
   }
 
   let itemRecemCriado = null;
@@ -1713,6 +1741,11 @@ form.addEventListener('submit', (e) => {
   form.reset();
   sincronizarChipAtiva();
   fecharSheetForm();
+
+  if (itemRecemCriado) {
+    registrarStreakAgora();
+    ganharXp(10);
+  }
 
   // Confetti quando é um ganho (não em edição, nem em lançamento recorrente em lote)
   if (itemRecemCriado && itemRecemCriado.tipo === 'entrada' && window.confetti) {
@@ -1836,8 +1869,19 @@ function criarItemEl(item) {
       <div class="item-data">${dataFormatada}</div>
       ${tagCat}${tagRecorrente}${tagPendente}${tagStatus}
     </div>
-    <div class="item-valor">${sinal} ${formatarMoeda(item.valor)}</div>
+    <div class="item-valor" data-id="${item.id}" title="Clique pra editar só o valor">${sinal} ${formatarMoeda(item.valor)}</div>
   `;
+
+  li.querySelector('.item-valor').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const novoValorStr = prompt('Novo valor:', item.valor.toFixed(2).replace('.', ','));
+    if (novoValorStr === null) return;
+    const novoValor = parseFloat(novoValorStr.replace(',', '.'));
+    if (isNaN(novoValor) || novoValor <= 0) { alert('Valor inválido.'); return; }
+    item.valor = novoValor;
+    salvar();
+    renderizarTudo();
+  });
 
   li.addEventListener('click', () => abrirAcaoItem(item));
 
@@ -1962,6 +2006,43 @@ modalConfirmarNovo.addEventListener('click', (e) => { if (e.target === modalConf
 btnAcaoEditar.addEventListener('click', () => {
   if (itemAcaoAtual) iniciarEdicao(itemAcaoAtual);
   fecharAcaoItem();
+});
+
+document.getElementById('btnAcaoRepetir').addEventListener('click', () => {
+  if (!itemAcaoAtual) return;
+  if (!temRecurso('pro')) {
+    fecharAcaoItem();
+    alert('Repetir lançamento é um recurso Pro. Assine pra usar sem limite.');
+    return;
+  }
+  const item = itemAcaoAtual;
+  const dia = new Date(item.data).getDate();
+  const qtdMesesStr = prompt('Repetir por quantos meses (a partir do mês que vem)?', '12');
+  fecharAcaoItem();
+  if (qtdMesesStr === null) return;
+  let qtdMeses = parseInt(qtdMesesStr);
+  if (isNaN(qtdMeses) || qtdMeses < 1) qtdMeses = 1;
+  if (qtdMeses > 60) qtdMeses = 60;
+
+  const agora = new Date();
+  for (let i = 1; i <= qtdMeses; i++) {
+    const dataLancamento = new Date(agora.getFullYear(), agora.getMonth() + i, 1);
+    const ultimoDiaDoMes = new Date(dataLancamento.getFullYear(), dataLancamento.getMonth() + 1, 0).getDate();
+    dataLancamento.setDate(Math.min(dia, ultimoDiaDoMes));
+    lancamentos.unshift({
+      id: Date.now() + i,
+      descricao: item.descricao,
+      valor: item.valor,
+      tipo: item.tipo,
+      categoria: item.categoria || '',
+      recorrente: true,
+      diaRecorrente: dia,
+      data: dataLancamento
+    });
+  }
+  salvar();
+  renderizarTudo();
+  alert(`"${item.descricao}" agora vai se repetir todo dia ${dia} pelos próximos ${qtdMeses} meses.`);
 });
 
 btnAcaoExcluir.addEventListener('click', () => {
@@ -2319,6 +2400,20 @@ function atualizarDonut() {
   donutVazioEl.classList.toggle('mostrar', total === 0);
   donutTotalEl.textContent = formatarMoeda(total);
 
+  const fraseEl = document.getElementById('fraseInteligente');
+  if (fraseEl) {
+    if (total > 0 && entradas.length > 0) {
+      const [nomeMaior, valorMaior] = entradas[0];
+      const pctMaior = Math.round((valorMaior / total) * 100);
+      fraseEl.style.display = 'block';
+      fraseEl.textContent = pctMaior >= 30
+        ? `👀 ${nomeMaior} foi ${pctMaior}% dos seus gastos esse mês.`
+        : `Seus gastos esse mês estão bem espalhados entre as categorias 👍`;
+    } else {
+      fraseEl.style.display = 'none';
+    }
+  }
+
   if (total === 0) {
     donutSvg.innerHTML = '';
     donutLegendaEl.innerHTML = '';
@@ -2572,6 +2667,10 @@ async function buscarDadosServidorAoAbrir() {
       layoutAtual = dadosServidor.layoutAtual || 'poupix';
       limiteGasto = dadosServidor.limiteGasto ?? null;
       metas = dadosServidor.metas || [];
+      if (dadosServidor.xpPendente > 0) {
+        ganharXp(dadosServidor.xpPendente);
+        fetch(API_URL + '/xp-aplicado', { method: 'POST', headers: { Authorization: 'Bearer ' + tokenSessao } }).catch(() => {});
+      }
       salvar();
       aplicarGating();
       atualizarBotaoPerfilTopo();
@@ -2661,11 +2760,54 @@ function registrarStreakAgora(){
   let streak = parseInt(localStorage.getItem('saldo_streak')||'0');
   if(ultimo!==hoje){
     const ontem = new Date(Date.now()-86400000).toISOString().slice(0,10);
-    streak = (ultimo===ontem) ? streak+1 : 1;
+    streak = (ontem===ultimo) ? streak+1 : 1;
     localStorage.setItem('saldo_streak', String(streak));
     localStorage.setItem('saldo_ultimo_registro', hoje);
     atualizarStreak();
     if([3,7,30].includes(streak) && window.confetti){ confetti({particleCount:120, spread:80, origin:{y:0.7}}); }
+    // Streak de 7 dias libera um tema/cor novo + bônus de XP
+    if (streak === 7 && localStorage.getItem('saldo_streak7_resgatado') !== '1') {
+      localStorage.setItem('saldo_streak7_resgatado', '1');
+      localStorage.setItem('saldo_layout_neon_liberado', '1');
+      ganharXp(50);
+      setTimeout(() => alert('🔥 7 dias seguidos! Você desbloqueou o tema Neon nas Configurações e ganhou +50 XP!'), 400);
+    }
+  }
+}
+
+// --- XP e nível: ganha XP a cada lançamento novo e a cada dia de streak ---
+function xpNecessarioPara(nivel) {
+  return nivel * 100; // nível 1->100xp, nível 2->200xp, etc (crescente e simples)
+}
+function atualizarBadgeXp() {
+  const xp = parseInt(localStorage.getItem('saldo_xp') || '0');
+  let nivel = 1;
+  let restante = xp;
+  while (restante >= xpNecessarioPara(nivel)) {
+    restante -= xpNecessarioPara(nivel);
+    nivel++;
+  }
+  const badge = document.getElementById('xpBadge');
+  if (badge) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = `⭐ Nível ${nivel}`;
+    badge.title = `${restante}/${xpNecessarioPara(nivel)} XP pro próximo nível`;
+  }
+  return nivel;
+}
+function ganharXp(quantidade) {
+  const nivelAntes = atualizarBadgeXp();
+  const xpAtual = parseInt(localStorage.getItem('saldo_xp') || '0');
+  localStorage.setItem('saldo_xp', String(xpAtual + quantidade));
+  const nivelDepois = atualizarBadgeXp();
+  if (nivelDepois > nivelAntes) {
+    const badge = document.getElementById('xpBadge');
+    if (badge) {
+      badge.classList.remove('subiu-nivel');
+      void badge.offsetWidth;
+      badge.classList.add('subiu-nivel');
+    }
+    if (window.confetti) confetti({ particleCount: 140, spread: 90, origin: { y: 0.6 } });
   }
 }
 // ZAP
@@ -2700,7 +2842,7 @@ async function salvarTelefoneZap(telefone, optin){
 }
 document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(()=>{
-    aplicarModoDemoSeVazio(); atualizarStreak(); verificarTelefonePendente();
+    aplicarModoDemoSeVazio(); atualizarStreak(); atualizarBadgeXp(); verificarTelefonePendente();
     const btnDemo=document.getElementById('btnLimparDemo'); if(btnDemo) btnDemo.addEventListener('click', limparDemo);
     const fab=document.getElementById('fabAdd'); if(fab) fab.addEventListener('click', ()=>{ abrirSheetForm(); });
     const btnSalvarTel=document.getElementById('btnSalvarTelefone'); const btnPularTel=document.getElementById('btnPularTelefone');

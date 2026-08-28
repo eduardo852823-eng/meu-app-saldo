@@ -76,6 +76,7 @@ const usuarioSchema = new mongoose.Schema({
   desafioPalavra: { type: String, default: '' },
   desafioSemanaChave: { type: String, default: '' },
   desafioAvisoEnviado: { type: Boolean, default: false },
+  xpPendente: { type: Number, default: 0 },
   criadoEm: { type: Date, default: Date.now }
 });
 
@@ -287,8 +288,16 @@ app.get('/dados', autenticar, (req, res) => {
     foto: req.usuario.foto, corEscolhida: req.usuario.corEscolhida, corLivreHex: req.usuario.corLivreHex,
     layoutAtual: req.usuario.layoutAtual, planoAtual: req.usuario.planoAtual, devAtivo: req.usuario.devAtivo,
     telefone: req.usuario.telefone, zapOptin: req.usuario.zapOptin, limiteGasto: req.usuario.limiteGasto,
-    desafioSemana: req.usuario.desafioSemana
+    desafioSemana: req.usuario.desafioSemana, xpPendente: req.usuario.xpPendente || 0
   });
+});
+
+app.post('/xp-aplicado', autenticar, async (req, res) => {
+  try {
+    req.usuario.xpPendente = 0;
+    await req.usuario.save();
+    res.json({ ok: true });
+  } catch (erro) { res.status(500).json({ erro: 'Erro ao zerar XP pendente.' }); }
 });
 
 app.post('/dados', autenticar, async (req, res) => {
@@ -389,6 +398,11 @@ async function enviarResumosDiarios() {
       console.log(`[resumo-diario] Zap para ${usuario.telefone}: ${ok.ok ? 'ENVIADO ✅' : 'FALHOU ❌ (' + ok.erro + ')'}`);
 
       if (ehSegunda && usuario.desafioSemanaChave !== chaveSemana) {
+        // Se tinha um desafio na semana passada e ele NÃO foi quebrado, dá os parabéns + XP antes de trocar
+        if (usuario.desafioSemanaChave && !usuario.desafioAvisoEnviado) {
+          usuario.xpPendente = (usuario.xpPendente || 0) + 30;
+          await enviarZap(usuario.telefone, `🏆 Mandou bem! Você cumpriu o desafio "${usuario.desafioSemana}" 🎉 +30 XP no app!`);
+        }
         usuario.desafioSemana = desafio.texto;
         usuario.desafioPalavra = desafio.palavra;
         usuario.desafioSemanaChave = chaveSemana;
@@ -426,15 +440,43 @@ app.post('/cron/resumo-diario', async (req, res) => {
 });
 
 // CRON 21h — pergunta noturna "Como foi hoje?" por WhatsApp
+// CRON 21h — Zap esperto: só cutuca quem esqueceu de anotar HOJE; se anotou, manda um parabéns
 cron.schedule('0 21 * * *', async () => {
-  console.log('Executando pergunta noturna...');
+  console.log('[zap-esperto] Executando checagem noturna...');
   try {
     const usuarios = await Usuario.find({ telefone: { $ne: '' }, zapOptin: true });
+    const hojeStr = new Date().toISOString().slice(0, 10);
     for (const usuario of usuarios) {
-      const texto = `🌙 Como foi hoje, ${usuario.nome}?\nResponde aqui mesmo:\n😍 Gastei pouco\n😐 Normal\n😭 Gastei muito`;
-      await enviarZap(usuario.telefone, texto);
+      const anotouHoje = usuario.ultimoLancamentoEm && new Date(usuario.ultimoLancamentoEm).toISOString().slice(0, 10) === hojeStr;
+
+      if (anotouHoje) {
+        const hoje = new Date(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear();
+        const gastoHoje = usuario.lancamentos
+          .filter(l => l.tipo === 'saida' && new Date(l.data).toISOString().slice(0, 10) === hojeStr)
+          .reduce((s, l) => s + l.valor, 0);
+        const gastoMes = usuario.lancamentos
+          .filter(l => { const d = new Date(l.data); return l.tipo === 'saida' && d.getMonth() === mesAtual && d.getFullYear() === anoAtual; })
+          .reduce((s, l) => s + l.valor, 0);
+        const mediaDiaria = gastoMes / hoje.getDate();
+        const foiBem = gastoHoje <= mediaDiaria * 1.1; // gastou perto ou abaixo da própria média do mês
+        const texto = foiBem
+          ? `🎉 Boa, ${usuario.nome}! Hoje você gastou pouco (R$ ${gastoHoje.toFixed(2)}). Continua assim!`
+          : `📝 Anotado! Hoje você gastou R$ ${gastoHoje.toFixed(2)} — um pouco acima da sua média do mês. Amanhã dá pra segurar mais 💪`;
+        console.log(`[zap-esperto] ${usuario.nome} anotou hoje, mandando parabéns.`);
+        await enviarZap(usuario.telefone, texto);
+      } else {
+        // Só manda o lembrete de "esqueceu hoje" se ainda não caiu no aviso de inatividade de 2+ dias
+        // (esse caso é tratado pelo cron das 20h, pra não mandar 2 mensagens na mesma noite)
+        const diasSemLancar = usuario.ultimoLancamentoEm
+          ? Math.floor((new Date() - new Date(usuario.ultimoLancamentoEm)) / 86400000)
+          : null;
+        if (diasSemLancar === null || diasSemLancar < 2) {
+          console.log(`[zap-esperto] ${usuario.nome} esqueceu de anotar hoje, mandando lembrete.`);
+          await enviarZap(usuario.telefone, `🌙 Ei ${usuario.nome}, você ainda não anotou nada hoje. Bora fechar o dia certinho no Economix?`);
+        }
+      }
     }
-  } catch (erro) { console.error('Erro na pergunta noturna:', erro.message); }
+  } catch (erro) { console.error('[zap-esperto] Erro:', erro.message); }
 });
 
 // CRON 20h — avisa quem ficou 2 dias (ou mais) sem lançar nada
