@@ -352,8 +352,11 @@
             <input type="checkbox" id="configZapOptin" checked> Receber resumo todo dia às 8h no WhatsApp
           </label>
           <div id="configTelefoneErro" class="auth-erro" style="display:none;"></div>
+          <div id="statusZap" class="limite-aviso" style="margin-bottom:6px;"></div>
+          <button type="button" id="btnRemoverZap" class="link-discreto link-perigo" style="display:none;margin-bottom:8px;">Remover WhatsApp</button>
 
           <p class="campo-aviso">Você recebe um resumo por e-mail todo dia às 8h, além dos avisos aqui dentro do app e no Zap se ativar.</p>
+          <button type="button" id="btnReativarPerguntaZap" class="link-discreto" style="margin:2px 0 8px;">🔔 Já pulei o WhatsApp antes — perguntar de novo</button>
           <button id="btnSalvarPerfil" class="btn-add btn-perfil-salvar" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
         </div>
 
@@ -677,6 +680,18 @@
     <label style="display:flex;gap:8px;text-align:left;font-size:12px;color:var(--text-dim);margin:8px 0 14px;"><input type="checkbox" id="checkZapOptin" checked> Quero receber no zap</label>
     <button id="btnSalvarTelefone" class="btn-add" style="width:100%;">Ativar alertas no Zap</button>
     <button id="btnPularTelefone" class="link-discreto" style="margin-top:10px;">Agora não</button>
+  </div>
+</div>
+
+<div class="modal-overlay escondido" id="modalCodigoZap">
+  <div class="modal-card" style="max-width:340px;text-align:center;">
+    <div class="modal-icone" style="background:linear-gradient(135deg,#25D366,#128C7E);">🔐</div>
+    <h1>Confirma seu número</h1>
+    <p class="modal-explica">Mandamos um código de 6 dígitos no seu WhatsApp. Cola aqui embaixo:</p>
+    <input type="text" id="inputCodigoZap" placeholder="000000" inputmode="numeric" maxlength="6" style="width:100%;margin:12px 0 8px;padding:14px;border-radius:12px;border:1px solid var(--card-line);background:var(--ink-2);color:var(--text);font-size:22px;text-align:center;letter-spacing:6px;">
+    <div id="codigoZapErro" class="auth-erro" style="display:none;"></div>
+    <button id="btnConfirmarCodigoZap" class="btn-add" style="width:100%;">Confirmar</button>
+    <button id="btnReenviarCodigoZap" class="link-discreto" style="margin-top:10px;">Reenviar código</button>
   </div>
 </div>
 

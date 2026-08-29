@@ -13,13 +13,14 @@ const app = express();
 app.use(cors({
   origin: [
     'https://economix.onrender.com',
+    'https://meu-app-saldo.onrender.com',
     'https://eduardo852823-eng.github.io',
     'http://localhost:3000',
     'capacitor://localhost'
   ],
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // ==============================
 // MongoDB
@@ -69,6 +70,9 @@ const usuarioSchema = new mongoose.Schema({
   metaAlvo: { type: Number, default: null },
   metas: [metaSchema],
   telefone: { type: String, default: '' },
+  zapVerificado: { type: Boolean, default: false },
+  zapCodigoVerificacao: String,
+  zapCodigoExpira: Date,
   zapOptin: { type: Boolean, default: true },
   ultimoLancamentoEm: { type: Date, default: null },
   avisoInatividadeEnviadoEm: { type: Date, default: null },
@@ -140,7 +144,7 @@ async function enviarEmail(destinatario, assunto, texto) {
 async function enviarZap(telefone, mensagem){
   // Pode configurar no Render como variáveis, mas já deixo fallback com seus dados
   const baseUrl = (process.env.EVOLUTION_API_URL || 'https://evolution-api-production-d61a.up.railway.app').replace(/\/$/, '');
-  const apikey = process.env.EVOLUTION_API_KEY || process.env.EVOLUTION_APIKEY || '998142A660D9-4A2F-A04A-A01B1B9AE0C5';
+  const apikey = process.env.EVOLUTION_API_KEY || process.env.EVOLUTION_APIKEY;
   const instance = process.env.EVOLUTION_INSTANCE || 'economix';
 
   if(!baseUrl || !apikey){
@@ -198,6 +202,7 @@ async function autenticar(req, res, next) {
 }
 
 const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, message: { erro: 'Muitas tentativas, tente em 15 min' } });
+const zapLimiter = rateLimit({ windowMs: 15*60*1000, max: 10, message: { erro: 'Muitas tentativas de WhatsApp, tente em 15 min' } });
 
 app.post('/cadastro', async (req, res) => {
   try {
@@ -287,7 +292,7 @@ app.get('/dados', autenticar, (req, res) => {
     metaAlvo: req.usuario.metaAlvo, metas: req.usuario.metas, criadoEm: req.usuario.criadoEm,
     foto: req.usuario.foto, corEscolhida: req.usuario.corEscolhida, corLivreHex: req.usuario.corLivreHex,
     layoutAtual: req.usuario.layoutAtual, planoAtual: req.usuario.planoAtual, devAtivo: req.usuario.devAtivo,
-    telefone: req.usuario.telefone, zapOptin: req.usuario.zapOptin, limiteGasto: req.usuario.limiteGasto,
+    telefone: req.usuario.telefone, zapOptin: req.usuario.zapOptin, zapVerificado: req.usuario.zapVerificado, limiteGasto: req.usuario.limiteGasto,
     desafioSemana: req.usuario.desafioSemana, xpPendente: req.usuario.xpPendente || 0
   });
 });
@@ -325,7 +330,7 @@ app.post('/dados', autenticar, async (req, res) => {
     }
 
     // Checa se algum gasto dessa semana quebrou o desafio ativo (ex: "Sem iFood")
-    if (req.usuario.telefone && req.usuario.zapOptin && req.usuario.desafioPalavra && !req.usuario.desafioAvisoEnviado
+    if (req.usuario.telefone && req.usuario.zapOptin && req.usuario.zapVerificado && req.usuario.desafioPalavra && !req.usuario.desafioAvisoEnviado
         && Array.isArray(lancamentos)) {
       const chaveSemana = chaveSemanaAtual();
       if (req.usuario.desafioSemanaChave === chaveSemana) {
@@ -374,7 +379,7 @@ function desafioDaSemana() {
 // Chamada tanto pelo cron interno quanto pela rota /cron/resumo-diario (pra um cron externo poder disparar).
 async function enviarResumosDiarios() {
   console.log('[resumo-diario] Iniciando envio diário...');
-  const usuariosComZap = await Usuario.find({ telefone: { $ne: '' }, zapOptin: true });
+  const usuariosComZap = await Usuario.find({ telefone: { $ne: '' }, zapOptin: true, zapVerificado: true });
   const usuariosComEmailSoTexto = await Usuario.find({ $or: [{ telefone: '' }, { zapOptin: false }] });
   const chaveSemana = chaveSemanaAtual();
   const ehSegunda = new Date().getDay() === 1;
@@ -420,7 +425,7 @@ async function enviarResumosDiarios() {
 }
 
 // CRON 8h — resumo diário + desafio da semana (toda segunda)
-cron.schedule('0 8 * * *', () => { enviarResumosDiarios().catch(e => console.error('[resumo-diario] Erro:', e.message)); });
+cron.schedule('0 8 * * *', () => { enviarResumosDiarios().catch(e => console.error('[resumo-diario] Erro:', e.message)); }, { timezone: 'America/Sao_Paulo' });
 
 // Rota de backup: um cron externo grátis (ex: cron-job.org) pode chamar isso todo dia 8h
 // pra garantir o envio mesmo se o Render tiver colocado o servidor pra dormir (comum no plano free).
@@ -444,7 +449,7 @@ app.post('/cron/resumo-diario', async (req, res) => {
 cron.schedule('0 21 * * *', async () => {
   console.log('[zap-esperto] Executando checagem noturna...');
   try {
-    const usuarios = await Usuario.find({ telefone: { $ne: '' }, zapOptin: true });
+    const usuarios = await Usuario.find({ telefone: { $ne: '' }, zapOptin: true, zapVerificado: true });
     const hojeStr = new Date().toISOString().slice(0, 10);
     for (const usuario of usuarios) {
       const anotouHoje = usuario.ultimoLancamentoEm && new Date(usuario.ultimoLancamentoEm).toISOString().slice(0, 10) === hojeStr;
@@ -477,13 +482,13 @@ cron.schedule('0 21 * * *', async () => {
       }
     }
   } catch (erro) { console.error('[zap-esperto] Erro:', erro.message); }
-});
+}, { timezone: 'America/Sao_Paulo' });
 
 // CRON 20h — avisa quem ficou 2 dias (ou mais) sem lançar nada
 cron.schedule('0 20 * * *', async () => {
   console.log('Checando inatividade...');
   try {
-    const usuarios = await Usuario.find({ telefone: { $ne: '' }, zapOptin: true });
+    const usuarios = await Usuario.find({ telefone: { $ne: '' }, zapOptin: true, zapVerificado: true });
     const agora = new Date();
     for (const usuario of usuarios) {
       if (!usuario.ultimoLancamentoEm) continue;
@@ -499,23 +504,101 @@ cron.schedule('0 20 * * *', async () => {
       }
     }
   } catch (erro) { console.error('Erro ao checar inatividade:', erro.message); }
-});
+}, { timezone: 'America/Sao_Paulo' });
 
-app.post('/telefone', async (req, res) => {
+app.post('/telefone', zapLimiter, async (req, res) => {
   try{
     const auth = req.headers.authorization?.replace('Bearer ', '');
     const usuario = await Usuario.findOne({ token: auth });
     if(!usuario) return res.status(401).json({erro:'Sessão inválida'});
     const { telefone, zapOptin } = req.body;
-    usuario.telefone = String(telefone).replace(/\D/g,'');
+    const telLimpo = String(telefone || '').replace(/\D/g,'');
+    if (telLimpo.length < 10 || telLimpo.length > 13) return res.status(400).json({erro:'Telefone inválido, precisa ter DDD.'});
+
+    const telefoneMudou = usuario.telefone !== telLimpo;
+    usuario.telefone = telLimpo;
     if(typeof zapOptin !== 'undefined') usuario.zapOptin = !!zapOptin;
+
+    if (!usuario.zapOptin) {
+      // Desativou o zap: não precisa verificar nada
+      usuario.zapVerificado = false;
+      await usuario.save();
+      return res.json({ ok: true, precisaVerificar: false });
+    }
+
+    if (telefoneMudou) usuario.zapVerificado = false; // número novo precisa verificar de novo
+
+    if (usuario.zapVerificado) {
+      // Já era um número verificado e continua o mesmo, não precisa mandar código de novo
+      await usuario.save();
+      return res.json({ ok: true, precisaVerificar: false });
+    }
+
+    // Manda código de verificação de 6 dígitos por Zap
+    const codigo = gerarCodigo();
+    usuario.zapCodigoVerificacao = codigo;
+    usuario.zapCodigoExpira = new Date(Date.now() + 10*60*1000);
     await usuario.save();
-    if(usuario.zapOptin){ await enviarZap(usuario.telefone, `Oi ${usuario.nome}! 👋 Economix ativado no zap ✅\nVou te mandar resumo diário 8h aqui.`); }
-    res.json({ok:true});
+    const resultado = await enviarZap(telLimpo, `Oi ${usuario.nome}! 👋\nSeu código pra ativar o Economix no WhatsApp é: *${codigo}*\nVale por 10 minutos.`);
+    if (!resultado.ok) return res.status(502).json({ ok:false, erro: `Não consegui mandar o código: ${resultado.erro}` });
+    res.json({ ok: true, precisaVerificar: true });
   }catch(e){ console.error(e); res.status(500).json({erro:'Erro'}); }
 });
 
-app.post('/testar-zap', async (req, res) => {
+app.post('/verificar-zap', zapLimiter, async (req, res) => {
+  try{
+    const auth = req.headers.authorization?.replace('Bearer ', '');
+    const usuario = await Usuario.findOne({ token: auth });
+    if(!usuario) return res.status(401).json({erro:'Sessão inválida'});
+    const { codigo } = req.body;
+    if (!usuario.zapCodigoVerificacao || !usuario.zapCodigoExpira) {
+      return res.status(400).json({ erro: 'Nenhum código pendente. Peça um novo.' });
+    }
+    if (usuario.zapCodigoExpira < new Date()) {
+      return res.status(400).json({ erro: 'Código expirado. Peça um novo.' });
+    }
+    if (String(codigo).trim() !== usuario.zapCodigoVerificacao) {
+      return res.status(400).json({ erro: 'Código incorreto.' });
+    }
+    usuario.zapVerificado = true;
+    usuario.zapCodigoVerificacao = '';
+    usuario.zapCodigoExpira = null;
+    await usuario.save();
+    await enviarZap(usuario.telefone, `✅ WhatsApp ativado! Vou te mandar resumo diário 8h e avisos por aqui, ${usuario.nome}.`);
+    res.json({ ok: true });
+  }catch(e){ console.error(e); res.status(500).json({erro:'Erro'}); }
+});
+
+app.get('/telefone/status', async (req, res) => {
+  try{
+    const auth = req.headers.authorization?.replace('Bearer ', '');
+    const usuario = await Usuario.findOne({ token: auth });
+    if(!usuario) return res.status(401).json({erro:'Sessão inválida'});
+    res.json({
+      temTelefone: !!usuario.telefone,
+      telefone: usuario.telefone || '',
+      zapOptin: !!usuario.zapOptin,
+      zapVerificado: !!usuario.zapVerificado
+    });
+  }catch(e){ console.error(e); res.status(500).json({erro:'Erro'}); }
+});
+
+app.post('/telefone/remover', zapLimiter, async (req, res) => {
+  try{
+    const auth = req.headers.authorization?.replace('Bearer ', '');
+    const usuario = await Usuario.findOne({ token: auth });
+    if(!usuario) return res.status(401).json({erro:'Sessão inválida'});
+    usuario.telefone = '';
+    usuario.zapOptin = false;
+    usuario.zapVerificado = false;
+    usuario.zapCodigoVerificacao = '';
+    usuario.zapCodigoExpira = null;
+    await usuario.save();
+    res.json({ ok: true });
+  }catch(e){ console.error(e); res.status(500).json({erro:'Erro'}); }
+});
+
+app.post('/testar-zap', zapLimiter, async (req, res) => {
   try{
     const { telefone } = req.body;
     if(!telefone) return res.status(400).json({erro:'Telefone vazio'});
@@ -526,6 +609,10 @@ app.post('/testar-zap', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.get('/health', (req, res) => {
+  res.json({ ok: true, mongo: mongoose.connection.readyState === 1 ? 'conectado' : 'desconectado' });
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT} - Evolution API integrada`);
 });

@@ -2704,12 +2704,8 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
 
 
 /* === ECONOMIX V3 FINAL - LIMPO === */
-.panel{
-  background: rgba(255,255,255,0.06) !important;
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,0.12) !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
-}
+/* (bloco .panel em inglês removido — código morto, nenhum elemento usava essa classe;
+   o app usa .painel em português em todo canto) */
 .fab{
   position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px; border-radius: 50%;
   background: linear-gradient(135deg,#3b82f6,#2563eb); color: white; font-size: 32px; font-weight: 800;

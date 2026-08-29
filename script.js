@@ -670,6 +670,7 @@ function abrirConfig() {
   painelPerfilTopo.classList.add('escondido');
   document.body.style.overflow = 'hidden';
   atualizarVisibilidadeFab();
+  atualizarStatusZapConfig();
 }
 
 document.getElementById('btnConfig').addEventListener('click', abrirConfig);
@@ -697,7 +698,7 @@ function atualizarVisibilidadeFab() {
     fab.classList.add('fab-escondido');
   }
   if (checkinBtn) {
-    const jaFezCheckinHoje = localStorage.getItem('saldo_ultimo_registro') === new Date().toISOString().slice(0, 10);
+    const jaFezCheckinHoje = localStorage.getItem('saldo_ultimo_registro_global') === new Date().toISOString().slice(0, 10);
     checkinBtn.style.display = (deveMostrar && !jaFezCheckinHoje) ? 'flex' : 'none';
   }
 }
@@ -751,7 +752,7 @@ async function confirmarSair() {
     CHAVE_LANCAMENTOS, CHAVE_META, CHAVE_METAS, CHAVE_NOME, CHAVE_TEMA, CHAVE_OCULTO,
     CHAVE_PLANO, CHAVE_DEV, CHAVE_DEV_PLANO, CHAVE_EMAIL, CHAVE_FOTO, CHAVE_LIMITE,
     CHAVE_CRIADOEM, CHAVE_COR, CHAVE_COR_HEX, CHAVE_LAYOUT, CHAVE_TUTORIAL_VISTO, CHAVE_TOKEN,
-    'saldo_telefone', 'saldo_zap_pulado', 'zap_perguntou_hoje', 'telefone_pendente_para_servidor'
+    'saldo_telefone', 'saldo_zap_pulado', 'saldo_zap_pulado_em', 'zap_perguntou_hoje', 'telefone_pendente_para_servidor'
   ];
   CHAVES_TUDO.forEach(chave => localStorage.removeItem(chave));
 
@@ -1240,6 +1241,29 @@ async function finalizarLogin(dados) {
   renderizarTudo();
   document.querySelector('.hero').classList.add('flash-sucesso');
   setTimeout(() => document.querySelector('.hero').classList.remove('flash-sucesso'), 900);
+
+  // Depois do login Google: se ainda não tem WhatsApp, pergunta. Se não tem meta nenhuma, sugere criar uma.
+  try {
+    const respStatus = await fetch(API_URL + '/telefone/status', { headers: { Authorization: 'Bearer ' + tokenSessao } });
+    if (respStatus.ok) {
+      const statusZap = await respStatus.json();
+      if (!statusZap.temTelefone) {
+        setTimeout(() => { const m = document.getElementById('modalTelefone'); if (m) m.classList.remove('escondido'); }, 1500);
+      } else if (statusZap.temTelefone && statusZap.zapOptin && !statusZap.zapVerificado) {
+        setTimeout(() => abrirModalCodigoZap(), 1500);
+      } else if (!statusZap.zapOptin) {
+        const pulouEm = localStorage.getItem('saldo_zap_pulado_em');
+        const diasDesdeQuePulou = pulouEm ? Math.floor((Date.now() - new Date(pulouEm).getTime()) / 86400000) : Infinity;
+        if (diasDesdeQuePulou >= 3) {
+          setTimeout(() => { const m = document.getElementById('modalTelefone'); if (m) m.classList.remove('escondido'); }, 1500);
+        }
+      }
+    }
+  } catch (e) {}
+
+  if (metas.length === 0 && metaAlvo === null) {
+    setTimeout(() => { if (modalMetaInicial) modalMetaInicial.classList.remove('escondido'); }, 2000);
+  }
 }
 
 function mostrarFormCodigo(email) {
@@ -1666,6 +1690,13 @@ filtroBtns.forEach(btn => {
 // --- Adicionar / salvar edição ---
 form.addEventListener('submit', (e) => {
   e.preventDefault();
+
+  if (!tokenSessao) {
+    fecharSheetForm();
+    alert('Faça login com Google pra lançar de verdade. O modo demo é só pra você ver como funciona.');
+    modalBoasVindas.classList.remove('escondido');
+    return;
+  }
 
   const descricao = inputDesc.value.trim();
   const valor = parseFloat(inputValor.value);
@@ -2731,38 +2762,54 @@ buscarDadosServidorAoAbrir(); if(typeof enviarTelefonePendenteSeExistir==='funct
 
 // === ECONOMIX V3 FINAL - DEMO + STREAK + FAB + ZAP ===
 const DEMO_LANCAMENTOS = [
-  { id: 9001, descricao: 'Salário', valor: 2500, tipo: 'entrada', categoria: 'mesada', data: new Date(Date.now()-5*86400000), confirmado: true },
-  { id: 9002, descricao: 'iFood', valor: 48.9, tipo: 'saida', categoria: 'comida', data: new Date(Date.now()-4*86400000), confirmado: true },
-  { id: 9003, descricao: 'Uber', valor: 22.5, tipo: 'saida', categoria: 'transporte', data: new Date(Date.now()-3*86400000), confirmado: true },
-  { id: 9004, descricao: 'Freela', valor: 450, tipo: 'entrada', categoria: 'mesada', data: new Date(Date.now()-2*86400000), confirmado: true },
-  { id: 9005, descricao: 'Cinema', valor: 65, tipo: 'saida', categoria: 'lazer', data: new Date(Date.now()-1*86400000), confirmado: true },
+  { id: 9001, descricao: 'Salário', valor: 2500, tipo: 'entrada', categoria: 'mesada', data: new Date(Date.now()-9*86400000), confirmado: true },
+  { id: 9002, descricao: 'Freela', valor: 450, tipo: 'entrada', categoria: 'mesada', data: new Date(Date.now()-8*86400000), confirmado: true },
+  { id: 9003, descricao: 'Mesada', valor: 200, tipo: 'entrada', categoria: 'mesada', data: new Date(Date.now()-7*86400000), confirmado: true },
+  { id: 9004, descricao: 'Venda usado', valor: 120, tipo: 'entrada', categoria: 'outros', data: new Date(Date.now()-6*86400000), confirmado: true },
+  { id: 9005, descricao: 'Prêmio', valor: 80, tipo: 'entrada', categoria: 'outros', data: new Date(Date.now()-5*86400000), confirmado: true },
+  { id: 9006, descricao: 'iFood', valor: 48.9, tipo: 'saida', categoria: 'comida', data: new Date(Date.now()-4*86400000), confirmado: true },
+  { id: 9007, descricao: 'Uber', valor: 22.5, tipo: 'saida', categoria: 'transporte', data: new Date(Date.now()-3*86400000), confirmado: true },
+  { id: 9008, descricao: 'Cinema', valor: 65, tipo: 'saida', categoria: 'lazer', data: new Date(Date.now()-2*86400000), confirmado: true },
+  { id: 9009, descricao: 'Curso online', valor: 39.9, tipo: 'saida', categoria: 'estudos', data: new Date(Date.now()-1*86400000), confirmado: true },
+  { id: 9010, descricao: 'Jogo Steam', valor: 59.9, tipo: 'saida', categoria: 'jogos', data: new Date(Date.now()), confirmado: true },
 ];
+// Modo demo: some SEMPRE que não há login (sem token e sem "sem conta" salvo). "Começar do zero" só
+// esconde pelo resto dessa sessão de navegador (sessionStorage) — na próxima vez que abrir sem login, volta.
 function aplicarModoDemoSeVazio(){
-  if(typeof lancamentos !== 'undefined' && lancamentos.length===0 && !localStorage.getItem('demo_visto')){
+  const temSessao = typeof tokenSessao !== 'undefined' && tokenSessao;
+  const escondidoNestaSessao = sessionStorage.getItem('demo_escondido_sessao') === '1';
+  if(!temSessao && !escondidoNestaSessao && typeof lancamentos !== 'undefined' && lancamentos.length===0){
     lancamentos = DEMO_LANCAMENTOS.map(l=>({...l}));
+    if (typeof metaAlvo === 'undefined' || metaAlvo === null || metaAlvo === undefined) {
+      metaAlvo = 2500;
+      const inputMeta = document.getElementById('metaAlvo'); if (inputMeta) inputMeta.value = 2500;
+      const nomeMeta = document.getElementById('metaNome'); if (nomeMeta) nomeMeta.value = 'iPhone';
+    }
     const b = document.getElementById('demoBanner'); if(b) b.style.display='flex';
     if(typeof renderizarTudo==='function') renderizarTudo();
+    if(typeof atualizarMeta==='function') atualizarMeta();
   }
 }
 function limparDemo(){
-  lancamentos = []; localStorage.setItem('demo_visto','1');
+  lancamentos = [];
+  sessionStorage.setItem('demo_escondido_sessao','1'); // só nessa sessão — sem login, o demo volta na próxima
   const b = document.getElementById('demoBanner'); if(b) b.style.display='none';
   if(typeof salvar==='function') salvar(); if(typeof renderizarTudo==='function') renderizarTudo();
 }
 function atualizarStreak(){
-  let streak = parseInt(localStorage.getItem('saldo_streak')||'0');
+  let streak = parseInt(localStorage.getItem('saldo_streak_global')||'0');
   const badge = document.getElementById('streakBadge');
   if(badge && streak>0){ badge.style.display='inline-flex'; badge.textContent = `🔥 ${streak} dia${streak>1?'s':''}`; }
 }
 function registrarStreakAgora(){
   const hoje = new Date().toISOString().slice(0,10);
-  const ultimo = localStorage.getItem('saldo_ultimo_registro');
-  let streak = parseInt(localStorage.getItem('saldo_streak')||'0');
+  const ultimo = localStorage.getItem('saldo_ultimo_registro_global');
+  let streak = parseInt(localStorage.getItem('saldo_streak_global')||'0');
   if(ultimo!==hoje){
     const ontem = new Date(Date.now()-86400000).toISOString().slice(0,10);
     streak = (ontem===ultimo) ? streak+1 : 1;
-    localStorage.setItem('saldo_streak', String(streak));
-    localStorage.setItem('saldo_ultimo_registro', hoje);
+    localStorage.setItem('saldo_streak_global', String(streak));
+    localStorage.setItem('saldo_ultimo_registro_global', hoje);
     atualizarStreak();
     if([3,7,30].includes(streak) && window.confetti){ confetti({particleCount:120, spread:80, origin:{y:0.7}}); }
     // Streak de 7 dias libera um tema/cor novo + bônus de XP
@@ -2780,7 +2827,7 @@ function xpNecessarioPara(nivel) {
   return nivel * 100; // nível 1->100xp, nível 2->200xp, etc (crescente e simples)
 }
 function atualizarBadgeXp() {
-  const xp = parseInt(localStorage.getItem('saldo_xp') || '0');
+  const xp = parseInt(localStorage.getItem('saldo_xp_global') || '0');
   let nivel = 1;
   let restante = xp;
   while (restante >= xpNecessarioPara(nivel)) {
@@ -2797,8 +2844,8 @@ function atualizarBadgeXp() {
 }
 function ganharXp(quantidade) {
   const nivelAntes = atualizarBadgeXp();
-  const xpAtual = parseInt(localStorage.getItem('saldo_xp') || '0');
-  localStorage.setItem('saldo_xp', String(xpAtual + quantidade));
+  const xpAtual = parseInt(localStorage.getItem('saldo_xp_global') || '0');
+  localStorage.setItem('saldo_xp_global', String(xpAtual + quantidade));
   const nivelDepois = atualizarBadgeXp();
   if (nivelDepois > nivelAntes) {
     const badge = document.getElementById('xpBadge');
@@ -2814,40 +2861,150 @@ function ganharXp(quantidade) {
 async function verificarTelefonePendente(){
   const temLocal = localStorage.getItem('saldo_telefone');
   const pulou = localStorage.getItem('saldo_zap_pulado');
+  const pulouEm = localStorage.getItem('saldo_zap_pulado_em');
+  const diasDesdeQuePulou = pulouEm ? Math.floor((Date.now() - new Date(pulouEm).getTime()) / 86400000) : Infinity;
   const jaPerguntouHoje = localStorage.getItem('zap_perguntou_hoje') === new Date().toISOString().slice(0,10);
-  if(!temLocal && !pulou && !jaPerguntouHoje){
+  // Pergunta de novo se: nunca perguntou, OU pulou mas já fazem 3+ dias — mas só uma vez por dia
+  const podePerguntarDeNovo = pulou && diasDesdeQuePulou >= 3;
+  if(!temLocal && (!pulou || podePerguntarDeNovo) && !jaPerguntouHoje){
     setTimeout(()=>{ const m=document.getElementById('modalTelefone'); if(m) m.classList.remove('escondido'); }, 1800);
   }
 }
 async function salvarTelefoneZap(telefone, optin){
   const telLimpo = telefone.replace(/\D/g,'');
-  if(telLimpo.length < 10){ alert('Número inválido, coloca DDD. Ex: 61999999999'); return false; }
+  if(telLimpo.length < 10 || telLimpo.length > 13){ alert('Número inválido, coloca DDD. Ex: 61999999999'); return false; }
   localStorage.setItem('saldo_telefone', telLimpo);
   localStorage.setItem('saldo_zap_pulado', optin ? '0' : '1');
+  localStorage.setItem('saldo_zap_pulado_em', new Date().toISOString());
   localStorage.setItem('zap_perguntou_hoje', new Date().toISOString().slice(0,10));
-  let enviouBoasVindas = false;
-  if(typeof tokenSessao !== 'undefined' && tokenSessao){
-    try{
-      const resp = await fetch(API_URL + '/telefone', { method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+tokenSessao}, body:JSON.stringify({telefone:telLimpo, zapOptin:optin}) });
-      enviouBoasVindas = resp.ok && optin; // /telefone já dispara a mensagem de boas-vindas no servidor quando optin=true
-    }catch(e){}
-  } else {
+
+  if(typeof tokenSessao === 'undefined' || !tokenSessao){
+    // Sem login ainda: guarda pra mandar quando logar (não dá pra verificar código sem sessão)
     localStorage.setItem('telefone_pendente_para_servidor', JSON.stringify({telefone:telLimpo, zapOptin:optin}));
+    return true;
   }
-  // Só usa /testar-zap como fallback (ex: sem sessão logada) pra não mandar 2 mensagens seguidas
-  if(optin && !enviouBoasVindas){
-    try{ await fetch(API_URL + '/testar-zap', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({telefone:telLimpo}) }); }catch(e){}
+
+  try{
+    const resp = await fetch(API_URL + '/telefone', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', Authorization:'Bearer '+tokenSessao},
+      body: JSON.stringify({telefone:telLimpo, zapOptin:optin})
+    });
+    const dados = await resp.json();
+    if (!resp.ok) { alert(dados.erro || 'Não consegui salvar seu telefone.'); return false; }
+    atualizarStatusZapConfig();
+    if (dados.precisaVerificar) {
+      abrirModalCodigoZap();
+    }
+    return true;
+  }catch(e){
+    alert('Erro de conexão ao salvar telefone.');
+    return false;
   }
-  return true;
+}
+
+// --- Modal de código de verificação do WhatsApp ---
+function abrirModalCodigoZap(){
+  const m = document.getElementById('modalCodigoZap');
+  const inputCodigo = document.getElementById('inputCodigoZap');
+  const erroEl = document.getElementById('codigoZapErro');
+  if (!m) return;
+  if (inputCodigo) inputCodigo.value = '';
+  if (erroEl) erroEl.style.display = 'none';
+  m.classList.remove('escondido');
+  setTimeout(() => { if (inputCodigo) inputCodigo.focus(); }, 250);
+}
+async function confirmarCodigoZap(){
+  const inputCodigo = document.getElementById('inputCodigoZap');
+  const erroEl = document.getElementById('codigoZapErro');
+  const codigo = inputCodigo ? inputCodigo.value.trim() : '';
+  if (erroEl) erroEl.style.display = 'none';
+  if (!codigo || codigo.length !== 6) {
+    if (erroEl) { erroEl.textContent = 'Digita os 6 números do código.'; erroEl.style.display = 'block'; }
+    return;
+  }
+  try{
+    const resp = await fetch(API_URL + '/verificar-zap', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', Authorization:'Bearer '+tokenSessao},
+      body: JSON.stringify({codigo})
+    });
+    const dados = await resp.json();
+    if (!resp.ok) {
+      if (erroEl) { erroEl.textContent = dados.erro || 'Código inválido.'; erroEl.style.display = 'block'; }
+      return;
+    }
+    document.getElementById('modalCodigoZap').classList.add('escondido');
+    if (window.confetti) confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+    atualizarStatusZapConfig();
+  }catch(e){
+    if (erroEl) { erroEl.textContent = 'Erro de conexão, tenta de novo.'; erroEl.style.display = 'block'; }
+  }
+}
+
+// --- Status do zap em Configurações > Perfil ---
+async function atualizarStatusZapConfig(){
+  const statusEl = document.getElementById('statusZap');
+  const btnRemover = document.getElementById('btnRemoverZap');
+  if (!statusEl || typeof tokenSessao === 'undefined' || !tokenSessao) return;
+  try{
+    const resp = await fetch(API_URL + '/telefone/status', { headers:{ Authorization:'Bearer '+tokenSessao } });
+    if (!resp.ok) return;
+    const dados = await resp.json();
+    if (dados.temTelefone && dados.zapOptin && dados.zapVerificado) {
+      statusEl.textContent = '✅ Zap ativo';
+      statusEl.className = 'limite-aviso ok';
+      if (btnRemover) btnRemover.style.display = 'inline-block';
+    } else if (dados.temTelefone && dados.zapOptin && !dados.zapVerificado) {
+      statusEl.textContent = '⏳ Falta confirmar o código que mandamos no seu WhatsApp';
+      statusEl.className = 'limite-aviso perigo';
+      if (btnRemover) btnRemover.style.display = 'inline-block';
+    } else {
+      statusEl.textContent = '❌ Zap desativado';
+      statusEl.className = 'limite-aviso';
+      if (btnRemover) btnRemover.style.display = 'none';
+    }
+  }catch(e){}
+}
+async function removerZap(){
+  if (!confirm('Remover seu número de WhatsApp? Você não vai receber mais resumos por lá.')) return;
+  try{
+    await fetch(API_URL + '/telefone/remover', { method:'POST', headers:{ Authorization:'Bearer '+tokenSessao } });
+    localStorage.removeItem('saldo_telefone');
+    if (configTelefone) configTelefone.value = '';
+    if (configZapOptin) configZapOptin.checked = false;
+    atualizarStatusZapConfig();
+  }catch(e){ alert('Erro ao remover o WhatsApp.'); }
 }
 document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(()=>{
     aplicarModoDemoSeVazio(); atualizarStreak(); atualizarBadgeXp(); verificarTelefonePendente();
     const btnDemo=document.getElementById('btnLimparDemo'); if(btnDemo) btnDemo.addEventListener('click', limparDemo);
-    const fab=document.getElementById('fabAdd'); if(fab) fab.addEventListener('click', ()=>{ abrirSheetForm(); });
+    const fab=document.getElementById('fabAdd'); if(fab) fab.addEventListener('click', ()=>{
+      if (!tokenSessao) {
+        const msgEl = document.querySelector('#modalBoasVindas .modal-card p, #modalBoasVindas p');
+        if (msgEl) msgEl.textContent = 'Faça login com Google pra lançar seus gastos de verdade (o modo demo é só pra você experimentar).';
+        modalBoasVindas.classList.remove('escondido');
+        return;
+      }
+      abrirSheetForm();
+    });
     const btnSalvarTel=document.getElementById('btnSalvarTelefone'); const btnPularTel=document.getElementById('btnPularTelefone');
     if(btnSalvarTel) btnSalvarTel.addEventListener('click', async ()=>{ const input=document.getElementById('inputTelefoneZap'); const check=document.getElementById('checkZapOptin'); const tel=input?input.value:''; const optin=check?check.checked:true; if(!tel){ alert('Coloca seu número'); return; } btnSalvarTel.textContent='Salvando...'; const ok=await salvarTelefoneZap(tel,optin); btnSalvarTel.textContent='Ativar alertas no Zap'; if(ok){ document.getElementById('modalTelefone').classList.add('escondido'); if(window.confetti) confetti({particleCount:100}); } });
-    if(btnPularTel) btnPularTel.addEventListener('click', ()=>{ localStorage.setItem('saldo_zap_pulado','1'); localStorage.setItem('zap_perguntou_hoje', new Date().toISOString().slice(0,10)); document.getElementById('modalTelefone').classList.add('escondido'); });
+    if(btnPularTel) btnPularTel.addEventListener('click', ()=>{ localStorage.setItem('saldo_zap_pulado','1'); localStorage.setItem('saldo_zap_pulado_em', new Date().toISOString()); localStorage.setItem('zap_perguntou_hoje', new Date().toISOString().slice(0,10)); document.getElementById('modalTelefone').classList.add('escondido'); });
+
+    const btnConfirmarCodigo = document.getElementById('btnConfirmarCodigoZap');
+    if (btnConfirmarCodigo) btnConfirmarCodigo.addEventListener('click', confirmarCodigoZap);
+    const btnReenviarCodigo = document.getElementById('btnReenviarCodigoZap');
+    if (btnReenviarCodigo) btnReenviarCodigo.addEventListener('click', async () => {
+      const tel = localStorage.getItem('saldo_telefone');
+      if (!tel) return;
+      btnReenviarCodigo.textContent = 'Reenviando...';
+      await salvarTelefoneZap(tel, true);
+      btnReenviarCodigo.textContent = 'Reenviar código';
+    });
+    const btnRemover = document.getElementById('btnRemoverZap');
+    if (btnRemover) btnRemover.addEventListener('click', removerZap);
   }, 700);
 });
 async function enviarTelefonePendenteSeExistir(){
