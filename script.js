@@ -239,6 +239,11 @@ function irParaPassoTour(indice) {
 function fecharTour() {
   tourOverlay.classList.add('escondido');
   localStorage.setItem(CHAVE_TUTORIAL_VISTO, '1');
+  if (typeof aposTutorialCallback === 'function') {
+    const cb = aposTutorialCallback;
+    aposTutorialCallback = null;
+    setTimeout(cb, 500);
+  }
 }
 
 btnTourAnterior.addEventListener('click', () => irParaPassoTour(Math.max(0, passoTourAtual - 1)));
@@ -248,8 +253,14 @@ window.addEventListener('resize', () => {
   if (!tourOverlay.classList.contains('escondido')) posicionarTour(passoTourAtual);
 });
 
-function mostrarTutorialInicialSeNecessario() {
-  if (localStorage.getItem(CHAVE_TUTORIAL_VISTO) === '1') return;
+// Guarda o que deve rodar assim que o tutorial fechar (pra não ficar tudo empilhado na tela)
+let aposTutorialCallback = null;
+function mostrarTutorialInicialSeNecessario(aposFechar) {
+  if (localStorage.getItem(CHAVE_TUTORIAL_VISTO) === '1') {
+    if (typeof aposFechar === 'function') setTimeout(aposFechar, 400);
+    return;
+  }
+  aposTutorialCallback = aposFechar || null;
   tourOverlay.classList.remove('escondido');
   setTimeout(() => irParaPassoTour(0), 50);
 }
@@ -671,6 +682,7 @@ function abrirConfig() {
   document.body.style.overflow = 'hidden';
   atualizarVisibilidadeFab();
   atualizarStatusZapConfig();
+  atualizarBotaoCheckinRapido();
 }
 
 document.getElementById('btnConfig').addEventListener('click', abrirConfig);
@@ -684,7 +696,6 @@ btnPerfilConfig.addEventListener('click', abrirConfig);
 // --- FAB (+) só aparece na Home/Dashboard (aba "lancar"); some em todas as outras telas ---
 function atualizarVisibilidadeFab() {
   const fab = document.getElementById('fabAdd');
-  const checkinBtn = document.getElementById('btnCheckinRapido');
   if (!fab) return;
   const configAberta = !configFullscreen.classList.contains('escondido');
   const abaAtualBtn = document.querySelector('.tab-btn.active, [data-tab].active');
@@ -697,16 +708,21 @@ function atualizarVisibilidadeFab() {
     fab.style.pointerEvents = 'none';
     fab.classList.add('fab-escondido');
   }
-  if (checkinBtn) {
-    const jaFezCheckinHoje = localStorage.getItem('saldo_ultimo_registro_global') === new Date().toISOString().slice(0, 10);
-    checkinBtn.style.display = (deveMostrar && !jaFezCheckinHoje) ? 'flex' : 'none';
-  }
+}
+
+// Check-in rápido agora mora em Config > Perfil — fica desabilitado se já fez check-in hoje
+function atualizarBotaoCheckinRapido() {
+  const checkinBtn = document.getElementById('btnCheckinRapido');
+  if (!checkinBtn) return;
+  const jaFezCheckinHoje = localStorage.getItem('saldo_ultimo_registro_global') === new Date().toISOString().slice(0, 10);
+  checkinBtn.disabled = jaFezCheckinHoje;
+  checkinBtn.textContent = jaFezCheckinHoje ? '✅ Dia confirmado!' : '✅ Confirmar dia (gastei pouco hoje)';
 }
 
 document.getElementById('btnCheckinRapido')?.addEventListener('click', () => {
   registrarStreakAgora();
   ganharXp(5);
-  atualizarVisibilidadeFab();
+  atualizarBotaoCheckinRapido();
   alert('Anotado! Boa, você fechou o dia 🎉');
 });
 
@@ -751,7 +767,7 @@ async function confirmarSair() {
   const CHAVES_TUDO = [
     CHAVE_LANCAMENTOS, CHAVE_META, CHAVE_METAS, CHAVE_NOME, CHAVE_TEMA, CHAVE_OCULTO,
     CHAVE_PLANO, CHAVE_DEV, CHAVE_DEV_PLANO, CHAVE_EMAIL, CHAVE_FOTO, CHAVE_LIMITE,
-    CHAVE_CRIADOEM, CHAVE_COR, CHAVE_COR_HEX, CHAVE_LAYOUT, CHAVE_TUTORIAL_VISTO, CHAVE_TOKEN,
+    CHAVE_CRIADOEM, CHAVE_COR, CHAVE_COR_HEX, CHAVE_LAYOUT, CHAVE_TOKEN,
     'saldo_telefone', 'saldo_zap_pulado', 'saldo_zap_pulado_em', 'zap_perguntou_hoje', 'telefone_pendente_para_servidor'
   ];
   CHAVES_TUDO.forEach(chave => localStorage.removeItem(chave));
@@ -1237,32 +1253,44 @@ async function finalizarLogin(dados) {
   saudacaoEl.textContent = `Olá, ${nomeUsuario} 👋`;
   atualizarBotaoPerfilTopo();
   modalBoasVindas.classList.add('escondido');
-  mostrarTutorialInicialSeNecessario();
   renderizarTudo();
   document.querySelector('.hero').classList.add('flash-sucesso');
   setTimeout(() => document.querySelector('.hero').classList.remove('flash-sucesso'), 900);
 
-  // Depois do login Google: se ainda não tem WhatsApp, pergunta. Se não tem meta nenhuma, sugere criar uma.
+  // Só verifica WhatsApp/meta DEPOIS que o tutorial (se precisar aparecer) já tiver fechado —
+  // pra não empilhar tutorial + modal de telefone + modal de meta tudo ao mesmo tempo na tela.
+  mostrarTutorialInicialSeNecessario(verificarZapEMetaPosLogin);
+}
+
+async function verificarZapEMetaPosLogin() {
   try {
     const respStatus = await fetch(API_URL + '/telefone/status', { headers: { Authorization: 'Bearer ' + tokenSessao } });
     if (respStatus.ok) {
       const statusZap = await respStatus.json();
       if (!statusZap.temTelefone) {
-        setTimeout(() => { const m = document.getElementById('modalTelefone'); if (m) m.classList.remove('escondido'); }, 1500);
+        const m = document.getElementById('modalTelefone'); if (m) m.classList.remove('escondido');
+        return; // um modal de cada vez — a meta é checada depois que esse fechar (btnPularTel/btnSalvarTel)
       } else if (statusZap.temTelefone && statusZap.zapOptin && !statusZap.zapVerificado) {
-        setTimeout(() => abrirModalCodigoZap(), 1500);
+        abrirModalCodigoZap();
+        return;
       } else if (!statusZap.zapOptin) {
         const pulouEm = localStorage.getItem('saldo_zap_pulado_em');
         const diasDesdeQuePulou = pulouEm ? Math.floor((Date.now() - new Date(pulouEm).getTime()) / 86400000) : Infinity;
         if (diasDesdeQuePulou >= 3) {
-          setTimeout(() => { const m = document.getElementById('modalTelefone'); if (m) m.classList.remove('escondido'); }, 1500);
+          const m = document.getElementById('modalTelefone'); if (m) m.classList.remove('escondido');
+          return;
         }
       }
+      // Já tem telefone verificado (ou já pulou recentemente) — não precisa mostrar nada de zap agora
     }
   } catch (e) {}
 
-  if (metas.length === 0 && metaAlvo === null) {
-    setTimeout(() => { if (modalMetaInicial) modalMetaInicial.classList.remove('escondido'); }, 2000);
+  verificarMetaInicialPosLogin();
+}
+
+function verificarMetaInicialPosLogin() {
+  if (metas.length === 0 && metaAlvo === null && modalMetaInicial) {
+    modalMetaInicial.classList.remove('escondido');
   }
 }
 
@@ -2937,6 +2965,7 @@ async function confirmarCodigoZap(){
     document.getElementById('modalCodigoZap').classList.add('escondido');
     if (window.confetti) confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
     atualizarStatusZapConfig();
+    setTimeout(verificarMetaInicialPosLogin, 500);
   }catch(e){
     if (erroEl) { erroEl.textContent = 'Erro de conexão, tenta de novo.'; erroEl.style.display = 'block'; }
   }
@@ -2990,8 +3019,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       abrirSheetForm();
     });
     const btnSalvarTel=document.getElementById('btnSalvarTelefone'); const btnPularTel=document.getElementById('btnPularTelefone');
-    if(btnSalvarTel) btnSalvarTel.addEventListener('click', async ()=>{ const input=document.getElementById('inputTelefoneZap'); const check=document.getElementById('checkZapOptin'); const tel=input?input.value:''; const optin=check?check.checked:true; if(!tel){ alert('Coloca seu número'); return; } btnSalvarTel.textContent='Salvando...'; const ok=await salvarTelefoneZap(tel,optin); btnSalvarTel.textContent='Ativar alertas no Zap'; if(ok){ document.getElementById('modalTelefone').classList.add('escondido'); if(window.confetti) confetti({particleCount:100}); } });
-    if(btnPularTel) btnPularTel.addEventListener('click', ()=>{ localStorage.setItem('saldo_zap_pulado','1'); localStorage.setItem('saldo_zap_pulado_em', new Date().toISOString()); localStorage.setItem('zap_perguntou_hoje', new Date().toISOString().slice(0,10)); document.getElementById('modalTelefone').classList.add('escondido'); });
+    if(btnSalvarTel) btnSalvarTel.addEventListener('click', async ()=>{ const input=document.getElementById('inputTelefoneZap'); const check=document.getElementById('checkZapOptin'); const tel=input?input.value:''; const optin=check?check.checked:true; if(!tel){ alert('Coloca seu número'); return; } btnSalvarTel.textContent='Salvando...'; const ok=await salvarTelefoneZap(tel,optin); btnSalvarTel.textContent='Ativar alertas no Zap'; if(ok){ document.getElementById('modalTelefone').classList.add('escondido'); if(window.confetti) confetti({particleCount:100}); const modalCodigo=document.getElementById('modalCodigoZap'); if(modalCodigo && modalCodigo.classList.contains('escondido')){ setTimeout(verificarMetaInicialPosLogin, 500); } } });
+    if(btnPularTel) btnPularTel.addEventListener('click', ()=>{ localStorage.setItem('saldo_zap_pulado','1'); localStorage.setItem('saldo_zap_pulado_em', new Date().toISOString()); localStorage.setItem('zap_perguntou_hoje', new Date().toISOString().slice(0,10)); document.getElementById('modalTelefone').classList.add('escondido'); setTimeout(verificarMetaInicialPosLogin, 500); });
 
     const btnConfirmarCodigo = document.getElementById('btnConfirmarCodigoZap');
     if (btnConfirmarCodigo) btnConfirmarCodigo.addEventListener('click', confirmarCodigoZap);

@@ -75,8 +75,6 @@
       </span>
       <span class="brand-name">Economix</span>
     </div>
-    <div id="streakBadge" class="streak-badge" style="display:none;">🔥 0 dias</div>
-    <div id="xpBadge" class="xp-badge" style="display:none;" title="Seu nível no Economix">⭐ Nível 1</div>
     <div class="topbar-direita">
       <button id="btnPerfil" class="btn-perfil-topo" title="Sua conta">
         <img id="perfilTopoFoto" style="display:none;">
@@ -331,6 +329,15 @@
         <div class="config-fs-secao ativa" id="fsPerfil">
           <h2>Perfil</h2>
           <p class="config-fs-explica">Como seu nome e foto aparecem no app.</p>
+
+          <div class="perfil-progresso-card">
+            <div class="perfil-progresso-badges">
+              <div id="streakBadge" class="streak-badge" style="display:none;">🔥 0 dias</div>
+              <div id="xpBadge" class="xp-badge" style="display:none;" title="Seu nível no Economix">⭐ Nível 1</div>
+            </div>
+            <button id="btnCheckinRapido" class="checkin-rapido" title="Registrar o dia sem lançar valor">✅ Confirmar dia (gastei pouco hoje)</button>
+          </div>
+
           <div class="perfil-topo">
             <div class="perfil-foto-wrap">
               <img id="perfilFotoImg" class="perfil-foto" style="display:none">
@@ -665,7 +672,6 @@
   </div>
 </div>
 
-<button id="btnCheckinRapido" class="checkin-rapido" title="Registrar o dia sem lançar valor">✅ Gastei pouco hoje</button>
 <button id="fabAdd" class="fab" title="Novo lançamento">+</button>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script src="script.js"></script>
