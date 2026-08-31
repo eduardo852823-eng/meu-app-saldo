@@ -365,6 +365,36 @@
           <p class="campo-aviso">Você recebe um resumo por e-mail todo dia às 8h, além dos avisos aqui dentro do app e no Zap se ativar.</p>
           <button type="button" id="btnReativarPerguntaZap" class="link-discreto" style="margin:2px 0 8px;">🔔 Já pulei o WhatsApp antes — perguntar de novo</button>
           <button id="btnSalvarPerfil" class="btn-add btn-perfil-salvar" style="margin-top:10px;max-width:220px;">Salvar perfil</button>
+
+          <div class="xp-cal-card">
+            <div class="xp-cal-secao">
+              <div class="xp-cal-topo">
+                <span class="xp-cal-titulo" id="xpCalNivelTexto">Nível 1</span>
+                <span class="xp-cal-valor" id="xpCalValorTexto">0/100 XP</span>
+              </div>
+              <div class="xp-barra-fundo">
+                <div class="xp-barra-preenchimento" id="xpBarraPreenchimento" style="width:0%;"></div>
+              </div>
+            </div>
+
+            <div class="xp-cal-divisor"></div>
+
+            <div class="xp-cal-secao">
+              <div class="xp-cal-topo">
+                <span class="xp-cal-titulo">📅 Dias ativos</span>
+                <span class="xp-cal-dias-qtd" id="xpCalDiasQtd">0 dias este mês</span>
+              </div>
+              <div class="mini-calendario" id="miniCalendario">
+                <div class="mini-cal-cabecalho" id="miniCalCabecalho"></div>
+                <div class="mini-cal-grade" id="miniCalGrade"></div>
+              </div>
+              <div class="xp-cal-legenda">
+                <span><i class="legenda-bolinha legenda-ativo"></i> Ativo</span>
+                <span><i class="legenda-bolinha legenda-recompensa"></i> Recompensa</span>
+                <span><i class="legenda-bolinha legenda-hoje"></i> Hoje</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="config-fs-secao" id="fsPlano">

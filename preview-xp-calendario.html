@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html data-tema="escuro">
+<head><meta charset="UTF-8"><title>Preview</title>
+<style>
+:root {
+  --bg: #05070d;
+  --bg-soft: #0b0f1a;
+  --panel: #0e1420;
+  --panel-2: #121a2b;
+  --line: rgba(120, 160, 255, 0.12);
+  --blue: #3b82f6;
+  --blue-bright: #60a5fa;
+  --blue-deep: #1d4ed8;
+  --cyan: #22d3ee;
+  --red: #f87171;
+  --text: #e8edf7;
+  --text-dim: #7b87a3;
+  --radius: 18px;
+  --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --grid-mask-op: 1;
+  color-scheme: dark;
+  transition: background 0.35s ease;
+}
+/* --- Card XP + Calendário de dias ativos (final da aba Perfil) --- */
+.xp-cal-card {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 22px;
+  background: radial-gradient(120% 140% at 10% 0%, rgba(59,130,246,0.16), transparent 55%), var(--panel);
+  border: 1px solid var(--card-line, rgba(120,160,255,0.14));
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25), inset 0 0 40px rgba(34,211,238,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.xp-cal-secao { display: flex; flex-direction: column; gap: 10px; }
+.xp-cal-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.xp-cal-titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+.xp-cal-valor {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--cyan);
+  text-shadow: 0 0 10px rgba(34,211,238,0.55);
+}
+.xp-cal-dias-qtd { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+
+.xp-cal-divisor {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line), transparent);
+  margin: 0;
+}
+
+/* Barra de XP com blur/glow */
+.xp-barra-fundo {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  border-radius: 100px;
+  background: var(--panel-2);
+  border: 1px solid var(--card-line, rgba(120,160,255,0.14));
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.35);
+}
+.xp-barra-preenchimento {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--blue-deep), var(--blue-bright) 55%, var(--cyan));
+  box-shadow: 0 0 14px 3px rgba(34,211,238,0.65), 0 0 22px 6px rgba(59,130,246,0.4);
+  transition: width .5s cubic-bezier(.34,1.56,.64,1);
+  position: relative;
+}
+.xp-barra-preenchimento::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.35), transparent 60%);
+  filter: blur(3px);
+  border-radius: 100px;
+}
+
+/* Mini calendário */
+.mini-calendario { width: 100%; }
+.mini-cal-cabecalho {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.mini-cal-cabecalho span {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.mini-cal-grade {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.mini-cal-dia {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--panel-2);
+  position: relative;
+}
+.mini-cal-dia.mini-cal-vazio { background: transparent; }
+.mini-cal-dia.mini-cal-ativo {
+  color: #04241f;
+  background: linear-gradient(145deg, #34d399, #10b981);
+  box-shadow: 0 0 10px 2px rgba(16,185,129,0.55);
+}
+.mini-cal-dia.mini-cal-recompensa {
+  color: #241503;
+  background: linear-gradient(145deg, #fbbf24, #f59e0b);
+  box-shadow: 0 0 12px 3px rgba(245,158,11,0.65);
+}
+.mini-cal-dia.mini-cal-recompensa::after {
+  content: "★";
+  position: absolute;
+  top: -5px; right: -3px;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(245,158,11,0.9);
+}
+.mini-cal-dia.mini-cal-hoje {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  box-shadow: 0 0 10px 2px rgba(34,211,238,0.6);
+}
+
+.xp-cal-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 2px;
+}
+.xp-cal-legenda span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.legenda-bolinha {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.legenda-ativo { background: linear-gradient(145deg, #34d399, #10b981); box-shadow: 0 0 6px rgba(16,185,129,0.6); }
+.legenda-recompensa { background: linear-gradient(145deg, #fbbf24, #f59e0b); box-shadow: 0 0 6px rgba(245,158,11,0.6); }
+.legenda-hoje { background: transparent; border: 2px solid var(--cyan); box-shadow: 0 0 6px rgba(34,211,238,0.6); }
+body{background:var(--bg);padding:24px;font-family:'Segoe UI',sans-serif;max-width:420px;margin:0 auto;}
+</style>
+</head>
+<body>
+<div class="xp-cal-card">
+  <div class="xp-cal-secao">
+    <div class="xp-cal-topo">
+      <span class="xp-cal-titulo">Nível 4</span>
+      <span class="xp-cal-valor">180/400 XP</span>
+    </div>
+    <div class="xp-barra-fundo">
+      <div class="xp-barra-preenchimento" style="width:45%;"></div>
+    </div>
+  </div>
+  <div class="xp-cal-divisor"></div>
+  <div class="xp-cal-secao">
+    <div class="xp-cal-topo">
+      <span class="xp-cal-titulo">📅 Dias ativos</span>
+      <span class="xp-cal-dias-qtd">17 dias este mês</span>
+    </div>
+    <div class="mini-calendario">
+      <div class="mini-cal-cabecalho"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+      <div class="mini-cal-grade"><div class="mini-cal-dia mini-cal-vazio"></div><div class="mini-cal-dia mini-cal-vazio"></div><div class="mini-cal-dia mini-cal-vazio"></div><div class="mini-cal-dia mini-cal-vazio"></div><div class="mini-cal-dia mini-cal-vazio"></div><div class="mini-cal-dia mini-cal-vazio"></div><div class="mini-cal-dia">1</div><div class="mini-cal-dia">2</div><div class="mini-cal-dia mini-cal-ativo">3</div><div class="mini-cal-dia mini-cal-ativo">4</div><div class="mini-cal-dia mini-cal-ativo">5</div><div class="mini-cal-dia">6</div><div class="mini-cal-dia mini-cal-recompensa">7</div><div class="mini-cal-dia mini-cal-ativo">8</div><div class="mini-cal-dia mini-cal-ativo">9</div><div class="mini-cal-dia">10</div><div class="mini-cal-dia mini-cal-ativo">11</div><div class="mini-cal-dia mini-cal-ativo">12</div><div class="mini-cal-dia">13</div><div class="mini-cal-dia mini-cal-recompensa">14</div><div class="mini-cal-dia">15</div><div class="mini-cal-dia">16</div><div class="mini-cal-dia mini-cal-ativo">17</div><div class="mini-cal-dia mini-cal-ativo">18</div><div class="mini-cal-dia mini-cal-ativo">19</div><div class="mini-cal-dia mini-cal-ativo">20</div><div class="mini-cal-dia mini-cal-recompensa">21</div><div class="mini-cal-dia">22</div><div class="mini-cal-dia">23</div><div class="mini-cal-dia mini-cal-ativo">24</div><div class="mini-cal-dia mini-cal-ativo">25</div><div class="mini-cal-dia">26</div><div class="mini-cal-dia">27</div><div class="mini-cal-dia">28</div><div class="mini-cal-dia">29</div><div class="mini-cal-dia">30</div><div class="mini-cal-dia mini-cal-ativo mini-cal-hoje">31</div></div>
+    </div>
+    <div class="xp-cal-legenda">
+      <span><i class="legenda-bolinha legenda-ativo"></i> Ativo</span>
+      <span><i class="legenda-bolinha legenda-recompensa"></i> Recompensa</span>
+      <span><i class="legenda-bolinha legenda-hoje"></i> Hoje</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

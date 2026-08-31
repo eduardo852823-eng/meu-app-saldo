@@ -2753,6 +2753,148 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
   cursor: default; transition: transform .2s ease;
 }
 .xp-badge.subiu-nivel { animation: pulsarXp .6s ease; }
+
+/* --- Card XP + Calendário de dias ativos (final da aba Perfil) --- */
+.xp-cal-card {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 22px;
+  background: radial-gradient(120% 140% at 10% 0%, rgba(59,130,246,0.16), transparent 55%), var(--panel);
+  border: 1px solid var(--card-line, rgba(120,160,255,0.14));
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25), inset 0 0 40px rgba(34,211,238,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.xp-cal-secao { display: flex; flex-direction: column; gap: 10px; }
+.xp-cal-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.xp-cal-titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+.xp-cal-valor {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--cyan);
+  text-shadow: 0 0 10px rgba(34,211,238,0.55);
+}
+.xp-cal-dias-qtd { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+
+.xp-cal-divisor {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line), transparent);
+  margin: 0;
+}
+
+/* Barra de XP com blur/glow */
+.xp-barra-fundo {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  border-radius: 100px;
+  background: var(--panel-2);
+  border: 1px solid var(--card-line, rgba(120,160,255,0.14));
+  overflow: hidden;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.35);
+}
+.xp-barra-preenchimento {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--blue-deep), var(--blue-bright) 55%, var(--cyan));
+  box-shadow: 0 0 14px 3px rgba(34,211,238,0.65), 0 0 22px 6px rgba(59,130,246,0.4);
+  transition: width .5s cubic-bezier(.34,1.56,.64,1);
+  position: relative;
+}
+.xp-barra-preenchimento::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.35), transparent 60%);
+  filter: blur(3px);
+  border-radius: 100px;
+}
+
+/* Mini calendário */
+.mini-calendario { width: 100%; }
+.mini-cal-cabecalho {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.mini-cal-cabecalho span {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.mini-cal-grade {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.mini-cal-dia {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--panel-2);
+  position: relative;
+}
+.mini-cal-dia.mini-cal-vazio { background: transparent; }
+.mini-cal-dia.mini-cal-ativo {
+  color: #04241f;
+  background: linear-gradient(145deg, #34d399, #10b981);
+  box-shadow: 0 0 10px 2px rgba(16,185,129,0.55);
+}
+.mini-cal-dia.mini-cal-recompensa {
+  color: #241503;
+  background: linear-gradient(145deg, #fbbf24, #f59e0b);
+  box-shadow: 0 0 12px 3px rgba(245,158,11,0.65);
+}
+.mini-cal-dia.mini-cal-recompensa::after {
+  content: "★";
+  position: absolute;
+  top: -5px; right: -3px;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(245,158,11,0.9);
+}
+.mini-cal-dia.mini-cal-hoje {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  box-shadow: 0 0 10px 2px rgba(34,211,238,0.6);
+}
+
+.xp-cal-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 2px;
+}
+.xp-cal-legenda span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.legenda-bolinha {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.legenda-ativo { background: linear-gradient(145deg, #34d399, #10b981); box-shadow: 0 0 6px rgba(16,185,129,0.6); }
+.legenda-recompensa { background: linear-gradient(145deg, #fbbf24, #f59e0b); box-shadow: 0 0 6px rgba(245,158,11,0.6); }
+.legenda-hoje { background: transparent; border: 2px solid var(--cyan); box-shadow: 0 0 6px rgba(34,211,238,0.6); }
 @keyframes pulsarXp {
   0%, 100% { transform: scale(1); }
   40% { transform: scale(1.25); }

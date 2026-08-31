@@ -2829,6 +2829,64 @@ function atualizarStreak(){
   const badge = document.getElementById('streakBadge');
   if(badge && streak>0){ badge.style.display='inline-flex'; badge.textContent = `🔥 ${streak} dia${streak>1?'s':''}`; }
 }
+function registrarDiaAtivoHistorico(dataStr, streakValor){
+  let hist = {};
+  try { hist = JSON.parse(localStorage.getItem('saldo_dias_ativos_hist') || '{}'); } catch(e) { hist = {}; }
+  hist[dataStr] = streakValor;
+  localStorage.setItem('saldo_dias_ativos_hist', JSON.stringify(hist));
+}
+const MARCOS_RECOMPENSA_STREAK = [3, 7, 14, 21, 30, 60, 90];
+function renderizarCalendarioXpPerfil(){
+  const grade = document.getElementById('miniCalGrade');
+  const cabecalho = document.getElementById('miniCalCabecalho');
+  if (!grade || !cabecalho) return;
+
+  let hist = {};
+  try { hist = JSON.parse(localStorage.getItem('saldo_dias_ativos_hist') || '{}'); } catch(e) { hist = {}; }
+
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = hoje.getMonth();
+  const hojeStr = hoje.toISOString().slice(0,10);
+  const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+  const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
+
+  cabecalho.innerHTML = ['D','S','T','Q','Q','S','S'].map(d => `<span>${d}</span>`).join('');
+
+  let html = '';
+  for (let i = 0; i < primeiroDiaSemana; i++) {
+    html += '<div class="mini-cal-dia mini-cal-vazio"></div>';
+  }
+  let ativosNoMes = 0;
+  for (let dia = 1; dia <= totalDiasMes; dia++) {
+    const dataStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+    const streakDoDia = hist[dataStr];
+    const foiAtivo = streakDoDia !== undefined;
+    const foiRecompensa = foiAtivo && MARCOS_RECOMPENSA_STREAK.includes(streakDoDia);
+    const ehHoje = dataStr === hojeStr;
+    if (foiAtivo) ativosNoMes++;
+    let classes = 'mini-cal-dia';
+    if (foiRecompensa) classes += ' mini-cal-recompensa';
+    else if (foiAtivo) classes += ' mini-cal-ativo';
+    if (ehHoje) classes += ' mini-cal-hoje';
+    html += `<div class="${classes}">${dia}</div>`;
+  }
+  grade.innerHTML = html;
+
+  const qtdEl = document.getElementById('xpCalDiasQtd');
+  if (qtdEl) qtdEl.textContent = `${ativosNoMes} dia${ativosNoMes===1?'':'s'} este mês`;
+
+  const xp = parseInt(localStorage.getItem('saldo_xp_global') || '0');
+  let nivel = 1, restante = xp;
+  while (restante >= xpNecessarioPara(nivel)) { restante -= xpNecessarioPara(nivel); nivel++; }
+  const precisa = xpNecessarioPara(nivel);
+  const nivelTexto = document.getElementById('xpCalNivelTexto');
+  const valorTexto = document.getElementById('xpCalValorTexto');
+  const barra = document.getElementById('xpBarraPreenchimento');
+  if (nivelTexto) nivelTexto.textContent = `Nível ${nivel}`;
+  if (valorTexto) valorTexto.textContent = `${restante}/${precisa} XP`;
+  if (barra) barra.style.width = `${Math.min(100, (restante / precisa) * 100)}%`;
+}
 function registrarStreakAgora(){
   const hoje = new Date().toISOString().slice(0,10);
   const ultimo = localStorage.getItem('saldo_ultimo_registro_global');
@@ -2838,6 +2896,8 @@ function registrarStreakAgora(){
     streak = (ontem===ultimo) ? streak+1 : 1;
     localStorage.setItem('saldo_streak_global', String(streak));
     localStorage.setItem('saldo_ultimo_registro_global', hoje);
+    registrarDiaAtivoHistorico(hoje, streak);
+    renderizarCalendarioXpPerfil();
     atualizarStreak();
     if([3,7,30].includes(streak) && window.confetti){ confetti({particleCount:120, spread:80, origin:{y:0.7}}); }
     // Streak de 7 dias libera um tema/cor novo + bônus de XP
@@ -2875,6 +2935,7 @@ function ganharXp(quantidade) {
   const xpAtual = parseInt(localStorage.getItem('saldo_xp_global') || '0');
   localStorage.setItem('saldo_xp_global', String(xpAtual + quantidade));
   const nivelDepois = atualizarBadgeXp();
+  renderizarCalendarioXpPerfil();
   if (nivelDepois > nivelAntes) {
     const badge = document.getElementById('xpBadge');
     if (badge) {
@@ -3007,7 +3068,7 @@ async function removerZap(){
 }
 document.addEventListener('DOMContentLoaded', ()=>{
   setTimeout(()=>{
-    aplicarModoDemoSeVazio(); atualizarStreak(); atualizarBadgeXp(); verificarTelefonePendente();
+    aplicarModoDemoSeVazio(); atualizarStreak(); atualizarBadgeXp(); renderizarCalendarioXpPerfil(); verificarTelefonePendente();
     const btnDemo=document.getElementById('btnLimparDemo'); if(btnDemo) btnDemo.addEventListener('click', limparDemo);
     const fab=document.getElementById('fabAdd'); if(fab) fab.addEventListener('click', ()=>{
       if (!tokenSessao) {
