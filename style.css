@@ -2042,6 +2042,39 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
 
 .perfil-campos { flex: 1; }
 
+/* --- Card único e coeso do perfil (foto+nome, whatsapp, salvar) --- */
+.perfil-card {
+  background: var(--panel);
+  border: 1px solid var(--card-line, rgba(120,160,255,0.14));
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.perfil-card .perfil-topo { margin-bottom: 6px; }
+.campo-grupo {
+  background: var(--panel-2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 10px 0 14px;
+  display: flex;
+  flex-direction: column;
+}
+.campo-label-icone { display: flex; align-items: center; gap: 6px; margin-top: 0; }
+.campo-icone { font-size: 13px; }
+.campo-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin: 10px 0 2px;
+  cursor: pointer;
+}
+.perfil-card .btn-perfil-salvar { margin-top: 6px; max-width: none; width: 100%; }
+
 .campo-label {
   display: block;
   font-size: 11px;
@@ -2756,15 +2789,16 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
 
 /* --- Card XP + Calendário de dias ativos (final da aba Perfil) --- */
 .xp-cal-card {
-  margin-top: 20px;
-  padding: 18px;
+  margin-top: 0;
+  padding: 14px 16px;
   border-radius: var(--radius);
   background: var(--panel);
   border: 1px solid var(--card-line, rgba(120,160,255,0.14));
   box-shadow: 0 6px 20px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .xp-cal-secao { display: flex; flex-direction: column; gap: 10px; }
 .xp-cal-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -2806,17 +2840,17 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
   position: relative;
 }
 
-/* Mini calendário */
-.mini-calendario { width: 100%; }
+/* Mini calendário — compacto */
+.mini-calendario { width: 100%; max-width: 260px; margin: 0 auto; }
 .mini-cal-cabecalho {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: 3px;
+  margin-bottom: 5px;
 }
 .mini-cal-cabecalho span {
   text-align: center;
-  font-size: 10.5px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--text-dim);
   text-transform: uppercase;
@@ -2824,20 +2858,21 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
 .mini-cal-grade {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
+  gap: 4px;
 }
 .mini-cal-dia {
   aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  font-size: 11.5px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text-dim);
   background: var(--panel-2);
   position: relative;
   border: 1px solid transparent;
+  transition: transform .12s ease;
 }
 .mini-cal-dia.mini-cal-vazio { background: transparent; }
 

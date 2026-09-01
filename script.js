@@ -694,6 +694,8 @@ function abrirConfig() {
   atualizarVisibilidadeFab();
   atualizarStatusZapConfig();
   atualizarBotaoCheckinRapido();
+  atualizarStreak();
+  renderizarCalendarioXpPerfil();
 }
 
 document.getElementById('btnConfig').addEventListener('click', abrirConfig);
@@ -725,16 +727,20 @@ function atualizarVisibilidadeFab() {
 function atualizarBotaoCheckinRapido() {
   const checkinBtn = document.getElementById('btnCheckinRapido');
   if (!checkinBtn) return;
-  const jaFezCheckinHoje = localStorage.getItem('saldo_ultimo_registro_global') === new Date().toISOString().slice(0, 10);
+  const jaFezCheckinHoje = localStorage.getItem('saldo_ultimo_registro_global') === dataLocalISO(new Date());
   checkinBtn.disabled = jaFezCheckinHoje;
   checkinBtn.textContent = jaFezCheckinHoje ? '✅ Dia confirmado!' : '✅ Confirmar dia (gastei pouco hoje)';
 }
 
 document.getElementById('btnCheckinRapido')?.addEventListener('click', () => {
-  registrarStreakAgora();
+  const hoje = dataLocalISO(new Date());
+  const jaTinhaConfirmadoHoje = localStorage.getItem('saldo_ultimo_registro_global') === hoje;
+  const marco = registrarStreakAgora();
   ganharXp(5);
   atualizarBotaoCheckinRapido();
-  alert('Anotado! Boa, você fechou o dia 🎉');
+  if (!jaTinhaConfirmadoHoje && !marco) {
+    setTimeout(() => alert('Anotado! Boa, você fechou o dia 🎉'), 0);
+  }
 });
 
 configSideItens.forEach(item => {
@@ -2857,10 +2863,26 @@ function diaSeguinteStr(str){
   return dataLocalISO(d);
 }
 
+// Se o último registro não foi hoje nem ontem, o streak já quebrou — zera na hora
+// (antes só quebrava "lazy" na próxima confirmação; agora reflete assim que o dia vira)
+function verificarStreakQuebrado(){
+  const hoje = dataLocalISO(new Date());
+  const ultimo = localStorage.getItem('saldo_ultimo_registro_global');
+  if (!ultimo) return;
+  const aindaVivo = ultimo === hoje || ultimo === diaAnteriorStr(hoje);
+  if (!aindaVivo && parseInt(localStorage.getItem('saldo_streak_global')||'0') !== 0) {
+    localStorage.setItem('saldo_streak_global', '0');
+  }
+}
+
 function atualizarStreak(){
+  verificarStreakQuebrado();
   let streak = parseInt(localStorage.getItem('saldo_streak_global')||'0');
   const badge = document.getElementById('streakBadge');
-  if(badge && streak>0){ badge.style.display='inline-flex'; badge.textContent = `🔥 ${streak} dia${streak>1?'s':''}`; }
+  if(badge){
+    badge.style.display = streak>0 ? 'inline-flex' : 'none';
+    badge.textContent = `🔥 ${streak} dia${streak>1?'s':''}`;
+  }
 }
 function registrarDiaAtivoHistorico(dataStr, streakValor){
   let hist = {};
@@ -3044,6 +3066,7 @@ function registrarStreakAgora(){
   const hoje = dataLocalISO(new Date());
   const ultimo = localStorage.getItem('saldo_ultimo_registro_global');
   let streak = parseInt(localStorage.getItem('saldo_streak_global')||'0');
+  let marcoAtingido = null;
   if(ultimo!==hoje){
     const ontem = diaAnteriorStr(hoje);
     streak = (ontem===ultimo) ? streak+1 : 1;
@@ -3058,9 +3081,11 @@ function registrarStreakAgora(){
       aplicarRecompensaMarco(marco);
       if (window.confetti) confetti({ particleCount: 130, spread: 85, origin: { y: 0.7 } });
       setTimeout(() => alert(`🔥 ${marco.dias} dias seguidos! Recompensa: ${marco.desc}`), 400);
+      marcoAtingido = marco;
     }
     renderizarCalendarioXpPerfil();
   }
+  return marcoAtingido;
 }
 
 // --- XP e nível: ganha XP a cada lançamento novo e a cada dia de streak ---
