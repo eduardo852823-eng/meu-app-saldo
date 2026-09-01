@@ -2758,10 +2758,10 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
 .xp-cal-card {
   margin-top: 20px;
   padding: 18px;
-  border-radius: 22px;
-  background: radial-gradient(120% 140% at 10% 0%, rgba(59,130,246,0.16), transparent 55%), var(--panel);
+  border-radius: var(--radius);
+  background: var(--panel);
   border: 1px solid var(--card-line, rgba(120,160,255,0.14));
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25), inset 0 0 40px rgba(34,211,238,0.05);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -2778,42 +2778,32 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
 .xp-cal-valor {
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--cyan);
-  text-shadow: 0 0 10px rgba(34,211,238,0.55);
+  color: var(--blue-bright);
 }
 .xp-cal-dias-qtd { font-size: 12px; color: var(--text-dim); font-weight: 600; }
 
 .xp-cal-divisor {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--line), transparent);
+  background: var(--line);
   margin: 0;
 }
 
-/* Barra de XP com blur/glow */
+/* Barra de XP */
 .xp-barra-fundo {
   position: relative;
   width: 100%;
-  height: 16px;
+  height: 14px;
   border-radius: 100px;
   background: var(--panel-2);
   border: 1px solid var(--card-line, rgba(120,160,255,0.14));
   overflow: hidden;
-  box-shadow: inset 0 2px 6px rgba(0,0,0,0.35);
 }
 .xp-barra-preenchimento {
   height: 100%;
   border-radius: 100px;
-  background: linear-gradient(90deg, var(--blue-deep), var(--blue-bright) 55%, var(--cyan));
-  box-shadow: 0 0 14px 3px rgba(34,211,238,0.65), 0 0 22px 6px rgba(59,130,246,0.4);
+  background: linear-gradient(90deg, var(--blue-deep), var(--blue-bright));
   transition: width .5s cubic-bezier(.34,1.56,.64,1);
   position: relative;
-}
-.xp-barra-preenchimento::after {
-  content: "";
-  position: absolute; inset: 0;
-  background: linear-gradient(90deg, rgba(255,255,255,0.35), transparent 60%);
-  filter: blur(3px);
-  border-radius: 100px;
 }
 
 /* Mini calendário */
@@ -2847,19 +2837,23 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
   color: var(--text-dim);
   background: var(--panel-2);
   position: relative;
+  border: 1px solid transparent;
 }
 .mini-cal-dia.mini-cal-vazio { background: transparent; }
+
+/* Dia ativo (já registrado, sem marco) */
 .mini-cal-dia.mini-cal-ativo {
   color: #04241f;
   background: linear-gradient(145deg, #34d399, #10b981);
-  box-shadow: 0 0 10px 2px rgba(16,185,129,0.55);
 }
-.mini-cal-dia.mini-cal-recompensa {
+
+/* Dia em que uma recompensa JÁ foi conquistada (marco já alcançado) */
+.mini-cal-dia.mini-cal-recompensa-ganha {
   color: #241503;
   background: linear-gradient(145deg, #fbbf24, #f59e0b);
-  box-shadow: 0 0 12px 3px rgba(245,158,11,0.65);
+  box-shadow: 0 0 0 2px rgba(245,158,11,0.35);
 }
-.mini-cal-dia.mini-cal-recompensa::after {
+.mini-cal-dia.mini-cal-recompensa-ganha::after {
   content: "★";
   position: absolute;
   top: -5px; right: -3px;
@@ -2867,10 +2861,24 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
   color: #fff;
   text-shadow: 0 0 4px rgba(245,158,11,0.9);
 }
+
+/* Dia futuro que VAI dar recompensa (previsão, ainda não alcançado) */
+.mini-cal-dia.mini-cal-recompensa-prevista {
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1.5px dashed #f59e0b;
+}
+.mini-cal-dia.mini-cal-recompensa-prevista::after {
+  content: "★";
+  position: absolute;
+  top: -5px; right: -3px;
+  font-size: 9px;
+  color: #f59e0b;
+}
+
 .mini-cal-dia.mini-cal-hoje {
-  outline: 2px solid var(--cyan);
-  outline-offset: 2px;
-  box-shadow: 0 0 10px 2px rgba(34,211,238,0.6);
+  outline: 2px solid var(--blue-bright);
+  outline-offset: 1px;
 }
 
 .xp-cal-legenda {
@@ -2887,14 +2895,76 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
   color: var(--text-dim);
   font-weight: 600;
 }
+
+/* Resumo de próximos marcos (abaixo do calendário) */
+.xp-cal-proximos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.xp-cal-proximos-titulo {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.xp-cal-proximos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.xp-cal-proximo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--card-line, rgba(120,160,255,0.14));
+}
+.xp-cal-proximo-item.xp-cal-proximo-amanha {
+  border-color: #f59e0b;
+}
+.xp-cal-proximo-esq {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.xp-cal-proximo-dia {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 3px 7px;
+  flex-shrink: 0;
+}
+.xp-cal-proximo-desc {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xp-cal-proximo-quando {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-weight: 700;
+  flex-shrink: 0;
+}
 .legenda-bolinha {
   width: 10px; height: 10px;
   border-radius: 50%;
   display: inline-block;
 }
-.legenda-ativo { background: linear-gradient(145deg, #34d399, #10b981); box-shadow: 0 0 6px rgba(16,185,129,0.6); }
-.legenda-recompensa { background: linear-gradient(145deg, #fbbf24, #f59e0b); box-shadow: 0 0 6px rgba(245,158,11,0.6); }
-.legenda-hoje { background: transparent; border: 2px solid var(--cyan); box-shadow: 0 0 6px rgba(34,211,238,0.6); }
+.legenda-ativo { background: linear-gradient(145deg, #34d399, #10b981); }
+.legenda-recompensa-ganha { background: linear-gradient(145deg, #fbbf24, #f59e0b); }
+.legenda-recompensa-prevista { background: var(--panel-2); border: 1.5px dashed #f59e0b; }
+.legenda-hoje { background: transparent; border: 2px solid var(--blue-bright); }
 @keyframes pulsarXp {
   0%, 100% { transform: scale(1); }
   40% { transform: scale(1.25); }

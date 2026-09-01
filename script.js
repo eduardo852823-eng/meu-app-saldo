@@ -320,7 +320,7 @@ function renderizarGradeCores() {
   coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
     const cor = btn.dataset.cor;
     const nivel = btn.dataset.nivel;
-    const liberado = temRecurso(nivel);
+    const liberado = temRecursoOuStreak(nivel, true);
     btn.classList.toggle('ativa', cor === corEscolhida);
     btn.classList.toggle('bloqueada', !liberado);
   });
@@ -333,8 +333,8 @@ coresGradeEl.querySelectorAll('.cor-opcao[data-cor]').forEach(btn => {
   btn.addEventListener('click', () => {
     const cor = btn.dataset.cor;
     const nivel = btn.dataset.nivel;
-    if (!temRecurso(nivel)) {
-      alert(nivel === 'pro' ? 'Essa cor é exclusiva dos planos Pro e Ultimate.' : 'Essa cor é exclusiva do plano Ultimate.');
+    if (!temRecursoOuStreak(nivel, true)) {
+      alert(nivel === 'pro' ? 'Essa cor é exclusiva dos planos Pro e Ultimate (ou desbloqueie mantendo um streak de 14 dias).' : 'Essa cor é exclusiva do plano Ultimate (ou desbloqueie mantendo um streak de 21 dias).');
       return;
     }
     corEscolhida = cor;
@@ -508,12 +508,23 @@ function carregar() {
 
 // --- Sistema de planos ---
 function planoEfetivo() {
-  return devAtivo ? devPlanoEscolhido : planoAtual;
+  const base = devAtivo ? devPlanoEscolhido : planoAtual;
+  if (typeof trialUltimateAtivo === 'function' && trialUltimateAtivo()) {
+    const ordem = { free: 0, pro: 1, ultimate: 2 };
+    return ordem[base] >= ordem.ultimate ? base : 'ultimate';
+  }
+  return base;
 }
 
 function temRecurso(nivelMinimo) {
   const ordem = { free: 0, pro: 1, ultimate: 2 };
   return ordem[planoEfetivo()] >= ordem[nivelMinimo];
+}
+// Recurso liberado pelo plano pago OU por recompensa de streak (cor/tema cosméticos)
+function temRecursoOuStreak(nivelMinimo, cor) {
+  if (temRecurso(nivelMinimo)) return true;
+  if (cor && typeof corLiberadaPorStreak === 'function') return corLiberadaPorStreak(nivelMinimo);
+  return false;
 }
 
 const NIVEL_DA_COR = { azul: 'free', verde: 'pro', laranja: 'pro', roxo: 'ultimate', rosa: 'ultimate', vermelho: 'ultimate', livre: 'ultimate' };
@@ -531,7 +542,7 @@ function aplicarGating() {
     donutBloqueado.style.display = pro ? 'none' : 'block';
   }
 
-  if (!temRecurso(NIVEL_DA_COR[corEscolhida] || 'ultimate') && corEscolhida !== 'azul') {
+  if (!temRecursoOuStreak(NIVEL_DA_COR[corEscolhida] || 'ultimate', true) && corEscolhida !== 'azul') {
     corEscolhida = 'azul';
   }
   aplicarCor(corEscolhida);
@@ -2824,6 +2835,28 @@ function limparDemo(){
   const b = document.getElementById('demoBanner'); if(b) b.style.display='none';
   if(typeof salvar==='function') salvar(); if(typeof renderizarTudo==='function') renderizarTudo();
 }
+// --- Utilidades de data local (evita bug de fuso: nunca usar toISOString p/ "hoje") ---
+function dataLocalISO(d){
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth()+1).padStart(2,'0');
+  const dia = String(d.getDate()).padStart(2,'0');
+  return `${ano}-${mes}-${dia}`;
+}
+function dataLocalDeStr(str){
+  const [a,m,d] = str.split('-').map(Number);
+  return new Date(a, m-1, d);
+}
+function diaAnteriorStr(str){
+  const d = dataLocalDeStr(str);
+  d.setDate(d.getDate()-1);
+  return dataLocalISO(d);
+}
+function diaSeguinteStr(str){
+  const d = dataLocalDeStr(str);
+  d.setDate(d.getDate()+1);
+  return dataLocalISO(d);
+}
+
 function atualizarStreak(){
   let streak = parseInt(localStorage.getItem('saldo_streak_global')||'0');
   const badge = document.getElementById('streakBadge');
@@ -2835,7 +2868,48 @@ function registrarDiaAtivoHistorico(dataStr, streakValor){
   hist[dataStr] = streakValor;
   localStorage.setItem('saldo_dias_ativos_hist', JSON.stringify(hist));
 }
-const MARCOS_RECOMPENSA_STREAK = [3, 7, 14, 21, 30, 60, 90];
+
+// --- Marcos de recompensa do streak: cada marco dá algo diferente ---
+const MARCOS_RECOMPENSA_STREAK = [
+  { dias: 3,  xp: 20,  desc: '+20 XP' },
+  { dias: 7,  xp: 50,  desc: '+50 XP e tema Neon', tema: 'neon' },
+  { dias: 14, xp: 80,  desc: '+80 XP e uma cor Pro', cor: 'pro' },
+  { dias: 21, xp: 120, desc: '+120 XP e uma cor Ultimate', cor: 'ultimate' },
+  { dias: 30, xp: 0,   desc: 'Ultimate grátis por 3 dias', trialDias: 3 },
+  { dias: 60, xp: 200, desc: '+200 XP' },
+  { dias: 90, xp: 300, desc: '+300 XP e Ultimate grátis por 1 ano', trialDias: 365 },
+];
+function marcoPorDias(dias){
+  return MARCOS_RECOMPENSA_STREAK.find(m => m.dias === dias);
+}
+function proximoMarcoApos(streakAtual){
+  return MARCOS_RECOMPENSA_STREAK.find(m => m.dias > streakAtual) || null;
+}
+
+// Libera bônus cosmético por streak sem mexer no plano pago real (mesmo padrão do tema Neon)
+function corLiberadaPorStreak(nivel){
+  if (nivel === 'pro') return localStorage.getItem('saldo_cor_pro_liberada') === '1';
+  if (nivel === 'ultimate') return localStorage.getItem('saldo_cor_ultimate_liberada') === '1';
+  return false;
+}
+function trialUltimateAtivo(){
+  const expira = parseInt(localStorage.getItem('saldo_trial_ultimate_expira') || '0');
+  return expira > Date.now();
+}
+function concederTrialUltimate(dias){
+  const atual = parseInt(localStorage.getItem('saldo_trial_ultimate_expira') || '0');
+  const base = Math.max(atual, Date.now());
+  const novaExpiracao = base + dias * 86400000;
+  localStorage.setItem('saldo_trial_ultimate_expira', String(novaExpiracao));
+}
+function aplicarRecompensaMarco(marco){
+  if (marco.xp > 0) ganharXp(marco.xp);
+  if (marco.tema === 'neon') localStorage.setItem('saldo_layout_neon_liberado', '1');
+  if (marco.cor === 'pro') localStorage.setItem('saldo_cor_pro_liberada', '1');
+  if (marco.cor === 'ultimate') localStorage.setItem('saldo_cor_ultimate_liberada', '1');
+  if (marco.trialDias) concederTrialUltimate(marco.trialDias);
+}
+
 function renderizarCalendarioXpPerfil(){
   const grade = document.getElementById('miniCalGrade');
   const cabecalho = document.getElementById('miniCalCabecalho');
@@ -2844,12 +2918,39 @@ function renderizarCalendarioXpPerfil(){
   let hist = {};
   try { hist = JSON.parse(localStorage.getItem('saldo_dias_ativos_hist') || '{}'); } catch(e) { hist = {}; }
 
-  const hoje = new Date();
-  const ano = hoje.getFullYear();
-  const mes = hoje.getMonth();
-  const hojeStr = hoje.toISOString().slice(0,10);
+  const marcosResgatados = new Set();
+  MARCOS_RECOMPENSA_STREAK.forEach(m => {
+    if (localStorage.getItem(`saldo_marco_${m.dias}_resgatado`) === '1') marcosResgatados.add(m.dias);
+  });
+
+  const hojeDate = new Date();
+  const ano = hojeDate.getFullYear();
+  const mes = hojeDate.getMonth();
+  const hojeStr = dataLocalISO(hojeDate);
   const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
   const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
+
+  const streakAtual = parseInt(localStorage.getItem('saldo_streak_global') || '0');
+  const ultimoRegistro = localStorage.getItem('saldo_ultimo_registro_global');
+  // O streak só "conta vivo" se o último registro foi hoje ou ontem (senão já quebrou)
+  const streakVivo = ultimoRegistro === hojeStr || ultimoRegistro === diaAnteriorStr(hojeStr);
+  const diasParaProximoMarco = {}; // dataStr -> marco previsto (dias futuros, projetando streak diário a partir de hoje)
+  if (streakVivo) {
+    let dataProjecao = dataLocalDeStr(hojeStr);
+    // Se hoje ainda não registrou, o dia de hoje seria streak+1; senão hoje já é o streak atual
+    let streakDeHoje = (ultimoRegistro === hojeStr) ? streakAtual : streakAtual + 1;
+    let streakProjetado = streakDeHoje;
+    // projeta os próximos ~120 dias a partir de hoje (cobre o marco de 90 dias)
+    for (let i = 0; i < 120; i++) {
+      const dStr = dataLocalISO(dataProjecao);
+      const marco = marcoPorDias(streakProjetado);
+      if (marco && !marcosResgatados.has(marco.dias)) {
+        diasParaProximoMarco[dStr] = marco;
+      }
+      dataProjecao.setDate(dataProjecao.getDate() + 1);
+      streakProjetado++;
+    }
+  }
 
   cabecalho.innerHTML = ['D','S','T','Q','Q','S','S'].map(d => `<span>${d}</span>`).join('');
 
@@ -2862,14 +2963,19 @@ function renderizarCalendarioXpPerfil(){
     const dataStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
     const streakDoDia = hist[dataStr];
     const foiAtivo = streakDoDia !== undefined;
-    const foiRecompensa = foiAtivo && MARCOS_RECOMPENSA_STREAK.includes(streakDoDia);
+    const marcoDoDia = foiAtivo ? marcoPorDias(streakDoDia) : null;
+    const foiRecompensaGanha = !!marcoDoDia;
+    const ehFuturo = dataStr > hojeStr;
+    const previstoParaEsseDia = ehFuturo ? diasParaProximoMarco[dataStr] : null;
     const ehHoje = dataStr === hojeStr;
     if (foiAtivo) ativosNoMes++;
     let classes = 'mini-cal-dia';
-    if (foiRecompensa) classes += ' mini-cal-recompensa';
+    if (foiRecompensaGanha) classes += ' mini-cal-recompensa-ganha';
     else if (foiAtivo) classes += ' mini-cal-ativo';
+    else if (previstoParaEsseDia) classes += ' mini-cal-recompensa-prevista';
     if (ehHoje) classes += ' mini-cal-hoje';
-    html += `<div class="${classes}">${dia}</div>`;
+    const titulo = foiRecompensaGanha ? ` title="${marcoDoDia.desc}"` : (previstoParaEsseDia ? ` title="Se manter o streak: ${previstoParaEsseDia.desc}"` : '');
+    html += `<div class="${classes}"${titulo}>${dia}</div>`;
   }
   grade.innerHTML = html;
 
@@ -2886,27 +2992,74 @@ function renderizarCalendarioXpPerfil(){
   if (nivelTexto) nivelTexto.textContent = `Nível ${nivel}`;
   if (valorTexto) valorTexto.textContent = `${restante}/${precisa} XP`;
   if (barra) barra.style.width = `${Math.min(100, (restante / precisa) * 100)}%`;
+
+  renderizarProximasRecompensas(streakVivo, streakAtual, ultimoRegistro, hojeStr, marcosResgatados);
 }
+
+// Lista abaixo do calendário com os próximos marcos, mesmo que caiam no mês que vem
+function renderizarProximasRecompensas(streakVivo, streakAtual, ultimoRegistro, hojeStr, marcosResgatados){
+  const lista = document.getElementById('xpCalProximosLista');
+  if (!lista) return;
+
+  const streakBase = !streakVivo ? 0 : ((ultimoRegistro === hojeStr) ? streakAtual : streakAtual + 1);
+  // dia "0" da projeção = hoje (se ainda não registrado) ou o dia já registrado hoje
+  let dataCursor = dataLocalDeStr(hojeStr);
+  let streakCursor = streakBase || 1; // se streak quebrado, o próximo dia ativo recomeça em 1
+
+  const proximos = [];
+  for (let i = 0; i < 400 && proximos.length < 4; i++) {
+    const marco = marcoPorDias(streakCursor);
+    if (marco && !marcosResgatados.has(marco.dias)) {
+      const dStr = dataLocalISO(dataCursor);
+      let quando;
+      if (dStr === hojeStr) quando = 'Hoje';
+      else if (dStr === diaSeguinteStr(hojeStr)) quando = 'Amanhã';
+      else {
+        const d = dataLocalDeStr(dStr);
+        quando = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+      }
+      proximos.push({ dia: marco.dias, desc: marco.desc, quando, dStr });
+    }
+    dataCursor.setDate(dataCursor.getDate() + 1);
+    streakCursor++;
+  }
+
+  if (proximos.length === 0) {
+    lista.innerHTML = `<div class="xp-cal-proximo-item"><span class="xp-cal-proximo-desc">Você já resgatou todas as recompensas de streak 🎉</span></div>`;
+    return;
+  }
+
+  lista.innerHTML = proximos.map(p => `
+    <div class="xp-cal-proximo-item${p.quando === 'Amanhã' ? ' xp-cal-proximo-amanha' : ''}">
+      <div class="xp-cal-proximo-esq">
+        <span class="xp-cal-proximo-dia">Dia ${p.dia}</span>
+        <span class="xp-cal-proximo-desc">${p.desc}</span>
+      </div>
+      <span class="xp-cal-proximo-quando">${p.quando}</span>
+    </div>
+  `).join('');
+}
+
 function registrarStreakAgora(){
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = dataLocalISO(new Date());
   const ultimo = localStorage.getItem('saldo_ultimo_registro_global');
   let streak = parseInt(localStorage.getItem('saldo_streak_global')||'0');
   if(ultimo!==hoje){
-    const ontem = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const ontem = diaAnteriorStr(hoje);
     streak = (ontem===ultimo) ? streak+1 : 1;
     localStorage.setItem('saldo_streak_global', String(streak));
     localStorage.setItem('saldo_ultimo_registro_global', hoje);
     registrarDiaAtivoHistorico(hoje, streak);
-    renderizarCalendarioXpPerfil();
     atualizarStreak();
-    if([3,7,30].includes(streak) && window.confetti){ confetti({particleCount:120, spread:80, origin:{y:0.7}}); }
-    // Streak de 7 dias libera um tema/cor novo + bônus de XP
-    if (streak === 7 && localStorage.getItem('saldo_streak7_resgatado') !== '1') {
-      localStorage.setItem('saldo_streak7_resgatado', '1');
-      localStorage.setItem('saldo_layout_neon_liberado', '1');
-      ganharXp(50);
-      setTimeout(() => alert('🔥 7 dias seguidos! Você desbloqueou o tema Neon nas Configurações e ganhou +50 XP!'), 400);
+
+    const marco = marcoPorDias(streak);
+    if (marco && localStorage.getItem(`saldo_marco_${marco.dias}_resgatado`) !== '1') {
+      localStorage.setItem(`saldo_marco_${marco.dias}_resgatado`, '1');
+      aplicarRecompensaMarco(marco);
+      if (window.confetti) confetti({ particleCount: 130, spread: 85, origin: { y: 0.7 } });
+      setTimeout(() => alert(`🔥 ${marco.dias} dias seguidos! Recompensa: ${marco.desc}`), 400);
     }
+    renderizarCalendarioXpPerfil();
   }
 }
 
