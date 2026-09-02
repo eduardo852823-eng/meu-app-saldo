@@ -1227,6 +1227,8 @@ async function finalizarLogin(dados) {
   tokenSessao = dados.token;
   nomeUsuario = dados.nome;
   emailUsuario = dados.email;
+  marcarContaComoIniciada();
+  esconderModoDemo();
 
   // Reseta tudo pro padrão ANTES de buscar — evita misturar dados
   // da conta/sessão anterior com a conta que está entrando agora
@@ -2735,7 +2737,8 @@ async function buscarDadosServidorAoAbrir() {
       lancamentos = (dadosServidor.lancamentos || []).map(l => ({ ...l, data: new Date(l.data) }));
       metaAlvo = dadosServidor.metaAlvo ?? null;
       criadoEm = dadosServidor.criadoEm || criadoEm;
-      fotoUsuario = dadosServidor.foto || '';
+      // Nunca deixa um valor vazio do servidor apagar algo que já existe local (ex: foto que não sincronizou direito)
+      if (dadosServidor.foto) fotoUsuario = dadosServidor.foto;
       planoAtual = dadosServidor.planoAtual || 'free';
       devAtivo = dadosServidor.devAtivo || false;
       corEscolhida = dadosServidor.corEscolhida || 'azul';
@@ -2747,6 +2750,8 @@ async function buscarDadosServidorAoAbrir() {
         ganharXp(dadosServidor.xpPendente);
         fetch(API_URL + '/xp-aplicado', { method: 'POST', headers: { Authorization: 'Bearer ' + tokenSessao } }).catch(() => {});
       }
+      marcarContaComoIniciada(); // logou com sucesso: nunca mais é "visitante", mesmo que fique com 0 lançamentos
+      esconderModoDemo();
       salvar();
       aplicarGating();
       atualizarBotaoPerfilTopo();
@@ -2818,12 +2823,22 @@ const DEMO_LANCAMENTOS = [
   { id: 9009, descricao: 'Curso online', valor: 39.9, tipo: 'saida', categoria: 'estudos', data: new Date(Date.now()-1*86400000), confirmado: true },
   { id: 9010, descricao: 'Jogo Steam', valor: 59.9, tipo: 'saida', categoria: 'jogos', data: new Date(Date.now()), confirmado: true },
 ];
-// Modo demo: some SEMPRE que não há login (sem token e sem "sem conta" salvo). "Começar do zero" só
-// esconde pelo resto dessa sessão de navegador (sessionStorage) — na próxima vez que abrir sem login, volta.
+// Modo demo: só existe pra quem é visitante de verdade (nunca fez login/cadastro).
+// Uma vez que a pessoa loga (ou já tem uma conta iniciada), o demo nunca mais aparece — nem se
+// zerar os lançamentos depois — pra não correr o risco de confundir dado real com dado de exemplo.
+const CHAVE_CONTA_INICIADA = 'saldo_conta_iniciada';
+function contaJaIniciada(){
+  return localStorage.getItem(CHAVE_CONTA_INICIADA) === '1' || !!tokenSessao;
+}
+function marcarContaComoIniciada(){
+  localStorage.setItem(CHAVE_CONTA_INICIADA, '1');
+}
+function esconderModoDemo(){
+  const b = document.getElementById('demoBanner'); if(b) b.style.display='none';
+}
 function aplicarModoDemoSeVazio(){
-  const temSessao = typeof tokenSessao !== 'undefined' && tokenSessao;
-  const escondidoNestaSessao = sessionStorage.getItem('demo_escondido_sessao') === '1';
-  if(!temSessao && !escondidoNestaSessao && typeof lancamentos !== 'undefined' && lancamentos.length===0){
+  if (contaJaIniciada()) { esconderModoDemo(); return; }
+  if(typeof lancamentos !== 'undefined' && lancamentos.length===0){
     lancamentos = DEMO_LANCAMENTOS.map(l=>({...l}));
     if (typeof metaAlvo === 'undefined' || metaAlvo === null || metaAlvo === undefined) {
       metaAlvo = 2500;
@@ -2837,8 +2852,8 @@ function aplicarModoDemoSeVazio(){
 }
 function limparDemo(){
   lancamentos = [];
-  sessionStorage.setItem('demo_escondido_sessao','1'); // só nessa sessão — sem login, o demo volta na próxima
-  const b = document.getElementById('demoBanner'); if(b) b.style.display='none';
+  marcarContaComoIniciada(); // "Começar do zero" = a partir de agora é conta de verdade, demo nunca mais volta
+  esconderModoDemo();
   if(typeof salvar==='function') salvar(); if(typeof renderizarTudo==='function') renderizarTudo();
 }
 // --- Utilidades de data local (evita bug de fuso: nunca usar toISOString p/ "hoje") ---
@@ -3074,6 +3089,9 @@ function registrarStreakAgora(){
     localStorage.setItem('saldo_ultimo_registro_global', hoje);
     registrarDiaAtivoHistorico(hoje, streak);
     atualizarStreak();
+    if (tokenSessao) {
+      fetch(API_URL + '/streak/marcar', { method: 'POST', headers: { Authorization: 'Bearer ' + tokenSessao } }).catch(() => {});
+    }
 
     const marco = marcoPorDias(streak);
     if (marco && localStorage.getItem(`saldo_marco_${marco.dias}_resgatado`) !== '1') {

@@ -2063,6 +2063,7 @@ html[data-layout="poupix"][data-tema="escuro"] .select-cat { background: var(--p
   flex-direction: column;
 }
 .campo-label-icone { display: flex; align-items: center; gap: 6px; margin-top: 0; }
+.campo-icone-whatsapp { display: inline-flex; align-items: center; }
 .campo-icone { font-size: 13px; }
 .campo-check {
   display: flex;
